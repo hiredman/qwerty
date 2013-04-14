@@ -1,5 +1,8 @@
 #!/usr/bin/java -jar /Users/hiredman/src/clojure/target/clojure-1.5.0-master-SNAPSHOT.jar
 
+(require '[clojure.walk :as w]
+         '[clojure.pprint :refer [pprint]])
+
 (declare ^:dynamic *context*)
 (declare ^:dynamic *scope*)
 
@@ -8,7 +11,7 @@
 (defmulti lower-seq first)
 
 (defmethod lower clojure.lang.Symbol [s]
-  {:expression s})
+  s)
 
 (defmethod lower clojure.lang.ISeq [s]
   (lower-seq s))
@@ -17,60 +20,36 @@
   (let [function-name (gensym 'fn)
         function-type-name (gensym 'Tfn)
         struct-name (gensym 'Sfn)
-        local-name (gensym 'fn)
-        lowered-body (lower body)]
-    {:declarations `(qwerty/do
-                      ~(:declarations lowered-body)
-                      (qwerty/defgofun ~function-name ~args
-                        ((~'string) ~'string)
-                        ~(:expression lowered-body))
-                      (qwerty/type ~function-type-name ((~'string)))
-                      (qwerty/struct ~struct-name
-                                     ~'_fun ~function-type-name))
-     :expression `(qwerty/do
-                    (qwerty/:= ~local-name (qwerty/new ~struct-name ~function-type-name))
-                    ~local-name)}))
+        local-name (gensym 'fn)]
+    `(qwerty/do
+       (qwerty/defgofun ~function-name ~args
+         ((~'string) ~'string)
+         (qwerty/do ~(lower body)))
+       (qwerty/type ~function-type-name ((~'string)))
+       (qwerty/struct ~struct-name
+                      ~'_fun ~function-type-name)
+       (qwerty/let* ((~local-name (qwerty/new ~struct-name ~function-type-name)))
+                    (qwerty/do
+                      ~local-name)))))
 
 (defmethod lower-seq 'qwerty/defgofun [[_ function-name args types & body]]
-  {:declarations `(qwerty/defgofun ~function-name ~args ~types
-                    ~@(map (comp :expression lower) body))
-   :expression nil})
+  `(qwerty/defgofun ~function-name ~args ~types
+     (qwerty/do ~@(map lower body))))
 
 (defmethod lower-seq 'qwerty/. [[_ func & args]]
-  {:declarations nil
-   :expression `(qwerty/. ~func ~@args)})
+  `(qwerty/. ~func ~@args))
 
 (defmethod lower-seq 'qwerty/do [[_ & body]]
-  (-> (reduce
-       (fn [m x]
-         (let [{:keys [expression declarations]} (lower x)]
-           (-> m
-               (update-in [:declarations] conj declarations)
-               (update-in [:expression] conj expression))))
-       {:declarations ['qwerty/do]
-        :expression ['qwerty/do]}
-       body)
-      (update-in [:declarations] seq)
-      (update-in [:expression] seq)))
+  (cons 'qwerty/do (map lower body)))
 
 (defmethod lower-seq 'qwerty/let* [[_ bindings & body]]
-  (if (seq bindings)
-    (let [lowered-bindings (for [[n v] bindings]
-                             [n (lower v)])
-          lowered-body (lower (cons 'qwerty/do body))]
-      {:declarations (concat (mapcat :declarations lowered-bindings)
-                             (:declarations lowered-body))
-       :expression (cons 'qwerty/do
-                         (concat (for [[n {:keys [expression]}] lowered-bindings]
-                                   (if (and (seq? expression)
-                                            (= 'qwerty/do (first expression)))
-                                     (let [x (butlast expression)]
-                                       (concat x `(qwerty/:= ~n ~(last expression))))
-                                     `(qwerty/:= ~n ~expression)))
-                                 [(:expression lowered-body)]))})))
+  `(qwerty/let* ~(for [[n v] bindings]
+                   `(~n ~(lower v)))
+                (qwerty/do
+                  ~@(map lower body))))
 
 (defmethod lower-seq 'qwerty/.- [expr]
-  {:expression expr})
+  expr)
 
 (defmethod lower-seq :default [[fun & args]]
   (assert (not= "qwerty" (namespace fun)))
@@ -180,6 +159,94 @@
   (if (= :return *context*)
     (println)))
 
+(defmulti raise-decls type)
+
+(defmethod raise-decls :default [s] s)
+
+(defmulti raise-decls-seq first)
+
+(defmethod raise-decls clojure.lang.ISeq [s]
+  (raise-decls-seq s))
+
+(defn decl? [form]
+  (and (seq? form)
+       ('#{qwerty/defgofun
+           qwerty/type
+           qwerty/struct} (first form))))
+
+(defmethod raise-decls-seq 'qwerty/defgofun [[_ function-name args types body]]
+  (let [body (if (seq? body) body `(qwerty/do ~body))
+        defs (doall (filter decl? body))
+        body (doall (map raise-decls (remove decl? body)))]
+    `(qwerty/do
+       ~@defs
+       (qwerty/defgofun ~function-name ~args ~types
+         ~body))))
+
+(defmethod raise-decls-seq 'qwerty/let* [[_ bindings body]]
+  (let [body (if (seq? body) body `(qwerty/do ~body))
+        defs (doall (filter decl? body))
+        body (map raise-decls (remove decl? body))
+        raised-bindings (for [[n v] bindings]
+                          (if (seq? v)
+                            {:n n
+                             :defs (doall (filter decl? v))
+                             :body (doall (map raise-decls (remove decl? v)))}
+                            {:n n
+                             :body v
+                             :defs nil}))
+        bindings (doall (for [{:keys [n body]} raised-bindings]
+                          `(~n ~body)))
+        defs (doall (concat defs (mapcat :defs raised-bindings)))]
+    `(qwerty/do
+       ~@defs
+       (qwerty/let* ~bindings
+                    ~body))))
+
+(defmethod raise-decls-seq 'qwerty/do [[_ & body]]
+  (cons 'qwerty/do (map raise-decls body)))
+
+(defmethod raise-decls-seq :default [exp]
+  (doall (map raise-decls exp)))
+
+(defn collapse-do [form]
+  (w/postwalk
+   (fn [form]
+     (if (and (seq? form)
+              (= (first form) 'qwerty/do))
+       (if (= 2 (count form))
+         (last form)
+         (mapcat
+          (fn [form]
+            (let [form form]
+              (if (and (seq? form)
+                       (= 'qwerty/do (first form)))
+                (rest form)
+                [form])))
+          form))
+       form))
+   form))
+
+(defn split-lets [form]
+  (w/postwalk
+   (fn [form]
+     (if (and (seq? form)
+              (= (first form) 'qwerty/let*)
+              (> (count (second form)) 1))
+       (let [[_ [b & bs] body] form]
+         `(qwerty/let* (~b)
+                       (qwerty/let* ~bs
+                                    ~body)))
+       form))
+   form))
+
+
+(defn f [form]
+  (let [nf (collapse-do (split-lets (collapse-do (raise-decls form))))]
+    (if (= nf form)
+      form
+      (recur nf))))
+
 (loop []
   (let [form (read)]
     (cond
@@ -189,10 +256,11 @@
      (println "import " (pr-str (second form)))
      (and (seq? form) (= (first form) 'defgo))
      (printf "func %s (){\n}\n\n" (second form))
-     :else (let [{:keys [declarations expression]} (lower form)]
-             (binding [*context* :statement
-                       *scope* :package]
-               (go declarations)
-               (go expression)))))
+     :else (pprint (f (lower form)))
+     #_(let [{:keys [declarations expression]} (lower form)]
+         (binding [*context* :statement
+                   *scope* :package]
+           (go declarations)
+           (go expression)))))
   (println)
   (recur))
