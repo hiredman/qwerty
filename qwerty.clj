@@ -28,7 +28,7 @@
        (qwerty/type ~function-type-name ((~'string)))
        (qwerty/struct ~struct-name
                       ~'_fun ~function-type-name)
-       (qwerty/let* ((~local-name (qwerty/new ~struct-name ~function-type-name)))
+       (qwerty/let* ((~local-name (qwerty/new ~struct-name ~function-name)))
                     (qwerty/do
                       ~local-name)))))
 
@@ -129,17 +129,26 @@
   (if (= :return *context*)
     (println)))
 
-(defmethod go-seq 'qwerty/:= [[_ n e]]
-  (if (= *scope* :function)
-    (do
-      (print n ":=")
-      (go e)
-      (println))
-    (do
-      (print "var" n "=")
-      (binding [*scope* :function]
-        (go e))
-      (println))))
+(defmethod go-seq 'qwerty/let*  [[_ [[n v]] body]]
+  (cond
+   (and (seq? v)
+        (= 'qwerty/let* (first v)))
+   (do
+     (go v)
+     (println)
+     (recur `(qwerty/let* ((~n ~(last v))) ~body)))
+   (= *scope* :function)
+   (do
+     (print " " n ":=")
+     (go v)
+     (println)
+     (go body))
+   :else
+   (do
+     (print "var " n "=")
+     (go v)
+     (println)
+     (go body))))
 
 (defmethod go-seq 'qwerty/. [[_ func & args]]
   (if (= :return *context*)
@@ -240,9 +249,24 @@
        form))
    form))
 
+(defn raise-lets [form]
+  (w/postwalk
+   (fn [form]
+     (if (and (seq? form)
+              (= (first form) 'qwerty/let*))
+       (let [[_ [[n v]] body] form]
+         (if (and (seq? v)
+                  (= (first v) 'qwerty/let*))
+           (let [[_ [[vn vv]] vbody] v]
+             `(qwerty/let* ((~vn ~vv))
+                           (qwerty/let* ((~n ~vbody))
+                                        ~body)))
+           form))
+       form))
+   form))
 
 (defn f [form]
-  (let [nf (collapse-do (split-lets (collapse-do (raise-decls form))))]
+  (let [nf (raise-lets (collapse-do (split-lets (collapse-do (raise-decls form)))))]
     (if (= nf form)
       form
       (recur nf))))
@@ -256,7 +280,10 @@
      (println "import " (pr-str (second form)))
      (and (seq? form) (= (first form) 'defgo))
      (printf "func %s (){\n}\n\n" (second form))
-     :else (pprint (f (lower form)))
+     :else (do
+             #_(pprint (f (lower form)))
+             (println)
+             (go (f (lower form))))
      #_(let [{:keys [declarations expression]} (lower form)]
          (binding [*context* :statement
                    *scope* :package]
