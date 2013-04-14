@@ -15,8 +15,9 @@
 ;; (qwerty/defgo foo anonXfunc (qwerty/new AnonXfunc anonX))
 
 (qwerty/defgofun main ()
-                 (())
-                 (qwerty/let* ((x (qwerty/fn* (x) x))
-                               (y (x "Hello World")))
-                   (qwerty/. fmt.Println y)))
+  (())
+  (qwerty/let* ((y "Hello World")
+                (z (qwerty/fn* () y))
+                (s (z)))
+    (qwerty/. fmt.Println s)))
 
