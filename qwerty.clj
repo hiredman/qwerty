@@ -17,6 +17,15 @@
 (defmethod free-variables clojure.lang.ISeq [exp]
   (free-variables-seq exp))
 
+(defmethod free-variables nil [exp]
+  #{})
+
+(defmethod free-variables-seq 'qwerty/. [[_ func & args]]
+  (set (mapcat free-variables args)))
+
+(defmethod free-variables-seq 'qwerty/do [[_ & body]]
+  (set (mapcat free-variables body)))
+
 (defmulti close-over (fn [exp variables this-name] (type exp)))
 (defmulti close-over-seq (fn [exp variables this-name] (first exp)))
 
@@ -26,8 +35,16 @@
                   t#)
     exp))
 
+(defmethod close-over nil [& _] nil)
+
 (defmethod close-over clojure.lang.ISeq [exp variables this-name]
   (close-over-seq exp variables this-name))
+
+(defmethod close-over-seq 'qwerty/. [[_ func & args] variables this-name]
+  `(qwerty/. ~func ~@(for [a args] (close-over a variables this-name))))
+
+(defmethod close-over-seq 'qwerty/do [[_ & body] variables this-name]
+  `(qwerty/do ~@(for [expr body] (close-over expr variables this-name))))
 
 (defmulti lower type)
 
@@ -38,6 +55,8 @@
 
 (defmethod lower java.lang.String [s]
   s)
+
+(defmethod lower nil [s] nil)
 
 (defmethod lower clojure.lang.ISeq [s]
   (lower-seq s))
@@ -54,9 +73,9 @@
         this-name (gensym 'this)]
     `(qwerty/do
        (qwerty/defgofun ~function-name ~(cons this-name args)
-         ((~struct-pointer) ~'interface)
+         ((~struct-pointer ~@(repeat (count args) 'interface)) ~'interface)
          (qwerty/do ~(close-over lowered-body (set free-in-body) this-name)))
-       (qwerty/type ~function-type-name ((~struct-pointer) ~'interface))
+       (qwerty/type ~function-type-name ((~struct-pointer ~@(repeat (count args) 'interface)) ~'interface))
        (qwerty/struct ~struct-name
                       ~@(for [v free-in-body
                               i [v 'interface]]
@@ -96,9 +115,8 @@
 
 (defmethod lower-seq :default [[fun & args]]
   (assert (not= "qwerty" (namespace fun)))
-  (lower `(qwerty/let* ((~'f (qwerty/.- ~fun ~'_fun))
-                        (~'r (qwerty/. ~'f ~fun ~@args)))
-                       ~'r)))
+  (lower `(qwerty/let* ((f# (qwerty/.- ~fun ~'_fun)))
+                       (qwerty/. f# ~fun ~@args))))
 
 (defmulti go type)
 
@@ -124,14 +142,15 @@
   (when (not= *scope* :package)
     (if (= :return *context*)
       (print "return"))
-    (print " null ")
+    (print " nil ")
     (if (= :return *context*)
       (println))))
 
 (defmethod go-seq 'qwerty/do [s]
   (doseq [item (butlast (rest s))]
     (binding [*context* :statement]
-      (go item)))
+      (go item)
+      (println)))
   (go (last s)))
 
 (defmethod go-seq 'qwerty/defgofun [[_ fun-name args types & body]]
@@ -159,7 +178,10 @@
 (defmethod go-seq 'qwerty/type [[_ type-name type-expression]]
   (assert (seq? type-expression))
   (print "type" type-name "func")
-  (print "(" (apply str (interpose \, (first type-expression))) ") ")
+  (print "(" (apply str (interpose \, (for [x (first type-expression)]
+                                        (if (= x 'interface)
+                                          "interface {}"
+                                          x)))) ") ")
   (if (= 'interface (last type-expression))
     (print "interface {}")
     (print (last type-expression)))
@@ -214,9 +236,10 @@
   (if (= :return *context*)
     (print "return"))
   (print "" func "(")
-  (doseq [v args]
-    (go v)
-    (print ","))
+  (binding [*context* :statement]
+    (doseq [v args]
+      (go v)
+      (print ",")))
   (print ")")
   (if (= :return *context*)
     (println)))
