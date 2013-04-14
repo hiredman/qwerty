@@ -3,7 +3,8 @@
 ;; needs more α-conversion
 
 (require '[clojure.walk :as w]
-         '[clojure.pprint :refer [pprint]])
+         '[clojure.pprint :refer [pprint]]
+         '[clojure.set :as s])
 
 (declare ^:dynamic *context*)
 (declare ^:dynamic *scope*)
@@ -23,8 +24,35 @@
 (defmethod free-variables-seq 'qwerty/. [[_ func & args]]
   (set (mapcat free-variables args)))
 
+(defmethod free-variables-seq 'qwerty/new [_]
+  #{})
+
 (defmethod free-variables-seq 'qwerty/do [[_ & body]]
   (set (mapcat free-variables body)))
+
+(defmethod free-variables-seq 'qwerty/set! [[_ f v]]
+  (free-variables v))
+
+(defmethod free-variables-seq 'qwerty/.- [_]
+  #{})
+
+(defmethod free-variables-seq 'qwerty/cast [[_ c v]]
+  (free-variables v))
+
+(defmethod free-variables-seq 'qwerty/let* [[_ bindings body]]
+  (:free (let [b (gensym)]
+           (reduce
+            (fn [{:keys [free bound]} [n value]]
+              (let [free (disj (into free (s/difference (free-variables value) bound)) b)
+                    bound (conj bound n)]
+                {:free free
+                 :bound bound}))
+            {:free #{}
+             :bound #{}} (concat bindings [[b body]])))))
+
+(defmethod free-variables-seq 'qwerty/+ [[_ a b]]
+  (into (free-variables a)
+        (free-variables b)))
 
 (defmulti close-over (fn [exp variables this-name] (type exp)))
 (defmulti close-over-seq (fn [exp variables this-name] (first exp)))
@@ -43,8 +71,35 @@
 (defmethod close-over-seq 'qwerty/. [[_ func & args] variables this-name]
   `(qwerty/. ~func ~@(for [a args] (close-over a variables this-name))))
 
+(defmethod close-over-seq 'qwerty/.- [exp variables this-name]
+  exp)
+
 (defmethod close-over-seq 'qwerty/do [[_ & body] variables this-name]
   `(qwerty/do ~@(for [expr body] (close-over expr variables this-name))))
+
+(defmethod close-over-seq 'qwerty/+ [[_ a b] variables this-name]
+  `(qwerty/+ ~(close-over a variables this-name)
+             ~(close-over b variables this-name)))
+
+(defmethod close-over-seq 'qwerty/let* [[_ bindings body] variables this-name]
+  (let [b (gensym)
+        r (reduce
+           (fn [b [n value]]
+             (let [bound (set (map first b))]
+               (conj b [n (close-over value (s/difference variables bound) this-name)])))
+           []
+           (concat bindings [[b body]]))]
+    `(qwerty/let* ~(butlast r)
+                  ~(second (last r)))))
+
+(defmethod close-over-seq 'qwerty/new [expr variables this-name]
+  expr)
+
+(defmethod close-over-seq 'qwerty/set! [[_ f v] variables this-name]
+  `(qwerty/set! ~f ~(close-over v variables this-name)))
+
+(defmethod close-over-seq 'qwerty/cast [[_ t v] variables this-name]
+  `(qwerty/cast ~t ~(close-over v variables this-name)))
 
 (defmulti lower type)
 
@@ -54,6 +109,9 @@
   s)
 
 (defmethod lower java.lang.String [s]
+  s)
+
+(defmethod lower java.lang.Number [s]
   s)
 
 (defmethod lower nil [s] nil)
@@ -113,10 +171,38 @@
 (defmethod lower-seq 'qwerty/.- [expr]
   expr)
 
+(defmethod lower-seq 'qwerty/struct [expr]
+  expr)
+
+(defmethod lower-seq 'qwerty/new [expr]
+  expr)
+
+(defmethod lower-seq 'qwerty/cast [[_ type v]]
+  (let [c (gensym)]
+    `(qwerty/let* ((~c ~(lower v)))
+                  (qwerty/cast ~type ~c))))
+
+(defmethod lower-seq 'qwerty/set! [[_ f v]]
+  (let [r (gensym)]
+    `(qwerty/let* ((~r ~(lower v)))
+                  (qwerty/set! ~f ~r))))
+
+(defmethod lower-seq 'qwerty/+ [[_ a b]]
+  (let [a_ (gensym)
+        b_ (gensym)]
+    `(qwerty/let* ((~a_ ~(lower a))
+                   (~b_ ~(lower b)))
+                  (qwerty/+ ~a_ ~b_))))
+
 (defmethod lower-seq :default [[fun & args]]
-  (assert (not= "qwerty" (namespace fun)))
-  (lower `(qwerty/let* ((f# (qwerty/.- ~fun ~'_fun)))
-                       (qwerty/. f# ~fun ~@args))))
+  (assert (not= "qwerty" (namespace fun)) fun)
+  (let [f (gensym 'f)
+        lowered-args (map lower args)
+        bound-args (for [a args]
+                     (list (gensym) a))]
+    (lower `(qwerty/let* ((~f (qwerty/.- ~fun ~'_fun))
+                          ~@bound-args)
+                         (qwerty/. ~f ~fun ~@(map first bound-args))))))
 
 (defmulti go type)
 
@@ -126,6 +212,11 @@
   (go-seq s))
 
 (defmethod go java.lang.String [s]
+  (print " ")
+  (pr s)
+  (print " "))
+
+(defmethod go java.lang.Number [s]
   (print " ")
   (pr s)
   (print " "))
@@ -265,6 +356,20 @@
   (print " &")
   (binding [*context* :statement]
     (go thing))
+  (if (= :return *context*)
+    (println)))
+
+(defmethod go-seq 'qwerty/cast [[_ t n]]
+  (if (= :return *context*)
+    (print "return"))
+  (print (str n ".("t ")"))
+  (if (= :return *context*)
+    (println)))
+
+(defmethod go-seq 'qwerty/+ [[_ a b]]
+  (if (= :return *context*)
+    (print "return"))
+  (print "(" (str a ".(int)") "+" (str b ".(int)") ")")
   (if (= :return *context*)
     (println)))
 
