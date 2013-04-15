@@ -15,6 +15,12 @@
 (defmethod free-variables clojure.lang.Symbol [s]
   #{s})
 
+(defmethod free-variables java.lang.Number [s]
+  #{})
+
+(defmethod free-variables java.lang.String [s]
+  #{})
+
 (defmethod free-variables clojure.lang.ISeq [exp]
   (free-variables-seq exp))
 
@@ -23,6 +29,12 @@
 
 (defmethod free-variables-seq 'qwerty/. [[_ func & args]]
   (set (mapcat free-variables args)))
+
+(defmethod free-variables-seq 'qwerty/local [_]
+  #{})
+
+(defmethod free-variables-seq 'qwerty/goderef [[_ v]]
+  #{})
 
 (defmethod free-variables-seq 'qwerty/new [_]
   #{})
@@ -63,6 +75,12 @@
                   t#)
     exp))
 
+(defmethod close-over String [exp variables this-name]
+  exp)
+
+(defmethod close-over Long [exp variables this-name]
+  exp)
+
 (defmethod close-over nil [& _] nil)
 
 (defmethod close-over clojure.lang.ISeq [exp variables this-name]
@@ -93,6 +111,12 @@
                   ~(second (last r)))))
 
 (defmethod close-over-seq 'qwerty/new [expr variables this-name]
+  expr)
+
+(defmethod close-over-seq 'qwerty/local [expr variables this-name]
+  expr)
+
+(defmethod close-over-seq 'qwerty/goderef [expr variables this-name]
   expr)
 
 (defmethod close-over-seq 'qwerty/set! [[_ f v] variables this-name]
@@ -182,6 +206,9 @@
     `(qwerty/let* ((~c ~(lower v)))
                   (qwerty/cast ~type ~c))))
 
+(defmethod lower-seq 'qwerty/local [exp]
+  exp)
+
 (defmethod lower-seq 'qwerty/set! [[_ f v]]
   (let [r (gensym)]
     `(qwerty/let* ((~r ~(lower v)))
@@ -193,6 +220,11 @@
     `(qwerty/let* ((~a_ ~(lower a))
                    (~b_ ~(lower b)))
                   (qwerty/+ ~a_ ~b_))))
+
+(defmethod lower-seq 'qwerty/godef [[_ n v]]
+  (let [a_ (gensym)]
+    `(qwerty/let* ((~a_ ~(lower v)))
+                  (qwerty/godef ~n ~a_))))
 
 (defmethod lower-seq :default [[fun & args]]
   (assert (not= "qwerty" (namespace fun)) fun)
@@ -216,7 +248,7 @@
   (pr s)
   (print " "))
 
-(defmethod go java.lang.Number [s]
+(defmethod go java.lang.Long[s]
   (print " ")
   (pr s)
   (print " "))
@@ -369,9 +401,15 @@
 (defmethod go-seq 'qwerty/+ [[_ a b]]
   (if (= :return *context*)
     (print "return"))
-  (print "(" (str a ".(int)") "+" (str b ".(int)") ")")
+  (print "(" a "+" b ")")
   (if (= :return *context*)
     (println)))
+
+(defmethod go-seq 'qwerty/godef [[_ n b]]
+  (println "var" n "=" b))
+
+(defmethod go-seq 'qwerty/local [[_ n type]]
+  (println "var" n type))
 
 (defmulti raise-decls type)
 
@@ -386,7 +424,8 @@
   (and (seq? form)
        ('#{qwerty/defgofun
            qwerty/type
-           qwerty/struct} (first form))))
+           qwerty/struct
+           } (first form))))
 
 (defmethod raise-decls-seq 'qwerty/defgofun [[_ function-name args types body]]
   (let [body (if (seq? body) body `(qwerty/do ~body))
