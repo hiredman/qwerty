@@ -530,23 +530,24 @@
       form
       (recur nf))))
 
-(loop []
-  (let [form (read)]
-    (cond
-     (and (seq? form) (= (first form) 'qwerty/package))
-     (println "package " (second form))
-     (and (seq? form) (= (first form) 'qwerty/import))
-     (println "import " (pr-str (second form)))
-     (and (seq? form) (= (first form) 'defgo))
-     (printf "func %s (){\n}\n\n" (second form))
-     :else (do
-             ;; (pprint (f (lower form)))
-             ;; (println)
-             (go (f (lower form))))
-     #_(let [{:keys [declarations expression]} (lower form)]
-         (binding [*context* :statement
-                   *scope* :package]
-           (go declarations)
-           (go expression)))))
-  (println)
-  (recur))
+(let [eof (Object.)]
+  (loop [form (read *in* false eof)]
+    (when-not (= eof form)
+      (cond
+       (and (seq? form) (= (first form) 'qwerty/package))
+       (println "package " (second form))
+       (and (seq? form) (= (first form) 'qwerty/import))
+       (println "import " (pr-str (second form)))
+       (and (seq? form) (= (first form) 'defgo))
+       (printf "func %s (){\n}\n\n" (second form))
+       :else (do
+               ;; (pprint (f (lower form)))
+               ;; (println)
+               (go (f (lower form))))
+       #_(let [{:keys [declarations expression]} (lower form)]
+           (binding [*context* :statement
+                     *scope* :package]
+             (go declarations)
+             (go expression))))
+      (println)
+      (recur (read *in* false eof)))))
