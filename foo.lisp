@@ -38,16 +38,15 @@
                   (qwerty/. fmt.Scanf "%c" (qwerty/goderef x))
                   x))
 
-(qwerty/godef stdin_rune (qwerty/fn* () (qwerty/. stdin_rune_)))
+(qwerty/godef stdin-rune (qwerty/fn* () (qwerty/. stdin_rune_)))
 
 (qwerty/defgofun main ()
                  (())
                  (qwerty/do
                   (println "x")
-                  (println (stdin_rune))
+                  (println (stdin-rune))
                   (println "y")
-                  (println (stdin_rune))
+                  (println (stdin-rune))
                   (println (iadd 1 2))
-                  (println car)
                   (println (cdr (cons "x" "y")))
                   (println "Hello World")))

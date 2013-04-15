@@ -202,7 +202,7 @@
   expr)
 
 (defmethod lower-seq 'qwerty/cast [[_ type v]]
-  (let [c (gensym)]
+  (let [c (gensym 'c)]
     `(qwerty/let* ((~c ~(lower v)))
                   (qwerty/cast ~type ~c))))
 
@@ -210,19 +210,19 @@
   exp)
 
 (defmethod lower-seq 'qwerty/set! [[_ f v]]
-  (let [r (gensym)]
+  (let [r (gensym 'v)]
     `(qwerty/let* ((~r ~(lower v)))
                   (qwerty/set! ~f ~r))))
 
 (defmethod lower-seq 'qwerty/+ [[_ a b]]
-  (let [a_ (gensym)
-        b_ (gensym)]
+  (let [a_ (gensym 'a)
+        b_ (gensym 'b)]
     `(qwerty/let* ((~a_ ~(lower a))
                    (~b_ ~(lower b)))
                   (qwerty/+ ~a_ ~b_))))
 
 (defmethod lower-seq 'qwerty/godef [[_ n v]]
-  (let [a_ (gensym)]
+  (let [a_ (gensym 'v)]
     `(qwerty/let* ((~a_ ~(lower v)))
                   (qwerty/godef ~n ~a_))))
 
@@ -231,7 +231,7 @@
   (let [f (gensym 'f)
         lowered-args (map lower args)
         bound-args (for [a args]
-                     (list (gensym) a))]
+                     (list (gensym 'invoke) a))]
     (lower `(qwerty/let* ((~f (qwerty/.- ~fun ~'_fun))
                           ~@bound-args)
                          (qwerty/. ~f ~fun ~@(map first bound-args))))))
@@ -257,7 +257,7 @@
   (when (not= *scope* :package)
     (if (= :return *context*)
       (print "return"))
-    (print (str " " s " "))
+    (print (str " " (munge s) " "))
     (if (= :return *context*)
       (println))))
 
@@ -349,7 +349,7 @@
      (go body))
    :else
    (do
-     (print "var " n "=")
+     (print "var " (munge n) "=")
      (binding [*context* :statement]
        (go v))
      (println)
@@ -370,7 +370,7 @@
 (defmethod go-seq 'qwerty/.- [[_ obj field]]
   (if (= :return *context*)
     (print "return"))
-  (print (str " " obj "." field " "))
+  (print (str " " (munge obj) "." (munge field) " "))
   (if (= :return *context*)
     (println)))
 
@@ -406,7 +406,7 @@
     (println)))
 
 (defmethod go-seq 'qwerty/godef [[_ n b]]
-  (println "var" n "=" b))
+  (println "var" (munge n) "=" b))
 
 (defmethod go-seq 'qwerty/local [[_ n type]]
   (println "var" n type))
