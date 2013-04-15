@@ -351,6 +351,10 @@
        (go v))
      (println)
      (recur `(qwerty/let* ((~n ~(last v))) ~body)))
+   (nil? v)
+   (do
+     (println "var" n "interface{}" "=" "nil")
+     (go body))
    (= *scope* :function)
    (do
      (print " " n ":=")
