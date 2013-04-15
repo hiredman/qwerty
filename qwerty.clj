@@ -143,8 +143,9 @@
 (defmethod lower clojure.lang.ISeq [s]
   (lower-seq s))
 
-(defmethod lower-seq 'qwerty/fn* [[_ args body]]
-  (let [function-name (gensym 'fn)
+(defmethod lower-seq 'qwerty/fn* [form]
+  (let [[_ args body] form
+        function-name (gensym 'fn)
         function-type-name (gensym 'Tfn)
         struct-name (gensym 'Sfn)
         struct-pointer (symbol (str "*" (name struct-name)))
@@ -156,7 +157,9 @@
     `(qwerty/do
        (qwerty/defgofun ~function-name ~(cons this-name args)
          ((~struct-pointer ~@(repeat (count args) 'interface)) ~'interface)
-         (qwerty/do ~(close-over lowered-body (set free-in-body) this-name)))
+         (qwerty/do
+           (qwerty/comment "line" ~(:line (meta form)))
+           ~(close-over lowered-body (set free-in-body) this-name)))
        (qwerty/type ~function-type-name ((~struct-pointer ~@(repeat (count args) 'interface)) ~'interface))
        (qwerty/struct ~struct-name
                       ~@(for [v free-in-body
@@ -209,6 +212,9 @@
 (defmethod lower-seq 'qwerty/local [exp]
   exp)
 
+(defmethod lower-seq 'qwerty/comment [exp]
+  exp)
+
 (defmethod lower-seq 'qwerty/set! [[_ f v]]
   (let [r (gensym 'v)]
     `(qwerty/let* ((~r ~(lower v)))
@@ -226,15 +232,20 @@
     `(qwerty/let* ((~a_ ~(lower v)))
                   (qwerty/godef ~n ~a_))))
 
-(defmethod lower-seq :default [[fun & args]]
-  (assert (not= "qwerty" (namespace fun)) fun)
-  (let [f (gensym 'f)
-        lowered-args (map lower args)
-        bound-args (for [a args]
-                     (list (gensym 'invoke) a))]
-    (lower `(qwerty/let* ((~f (qwerty/.- ~fun ~'_fun))
-                          ~@bound-args)
-                         (qwerty/. ~f ~fun ~@(map first bound-args))))))
+(defmethod lower-seq :default [form]
+  (let [[fun & args] form]
+    (assert (not= "qwerty" (namespace fun)) fun)
+    (let [f (gensym 'f)
+          lowered-args (map lower args)
+          bound-args (for [a args]
+                       (if (symbol? a)
+                         (list a a)
+                         (list (gensym 'arg) a)))]
+      (lower `(qwerty/let* ((~f (qwerty/.- ~fun ~'_fun))
+                            ~@(remove (fn [[n v]] (= n v)) bound-args))
+                           (qwerty/do
+                             (qwerty/comment "line" ~(:line (meta form)))
+                             (qwerty/. ~f ~fun ~@(map first bound-args))))))))
 
 (defmulti go type)
 
@@ -407,6 +418,9 @@
 
 (defmethod go-seq 'qwerty/godef [[_ n b]]
   (println "var" (munge n) "=" b))
+
+(defmethod go-seq 'qwerty/comment [[_ & args]]
+  (println "//" (apply print-str args)))
 
 (defmethod go-seq 'qwerty/local [[_ n type]]
   (println "var" n type))
