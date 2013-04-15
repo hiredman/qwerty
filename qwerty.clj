@@ -215,6 +215,11 @@
 (defmethod lower-seq 'qwerty/comment [exp]
   exp)
 
+(defmethod lower-seq 'qwerty/nil? [[_ e]]
+  (let [r (gensym 'r)]
+    `(qwerty/let* ((~r ~(lower e)))
+                  (qwerty/nil? ~r))))
+
 (defmethod lower-seq 'qwerty/set! [[_ f v]]
   (let [r (gensym 'v)]
     `(qwerty/let* ((~r ~(lower v)))
@@ -428,6 +433,9 @@
 
 (defmethod go-seq 'qwerty/local [[_ n type]]
   (println "var" n type))
+
+(defmethod go-seq 'qwerty/nil? [[_ v]]
+  (println "(" v "== nil" ")"))
 
 (defmulti raise-decls type)
 
