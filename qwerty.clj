@@ -424,7 +424,7 @@
   (println "var" (munge n) "=" b))
 
 (defmethod go-seq 'qwerty/comment [[_ & args]]
-  (println "//" (apply print-str args)))
+  (println "/*" (apply print-str args) "*/"))
 
 (defmethod go-seq 'qwerty/local [[_ n type]]
   (println "var" n type))
