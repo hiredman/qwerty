@@ -63,7 +63,7 @@
   (let [args (for [a values]
                [a (gensym a)])]
     `(qwerty/results ~(map second args)
-                     ~exp
+                     ~(α-convert exp env)
                      ~(α-convert body (into env args)))))
 
 (defmethod α-convert-seq 'qwerty/defgofun [[_ name args types body] env]
@@ -77,6 +77,9 @@
 
 (defmethod α-convert-seq 'qwerty/do [[_ & body] env]
   `(qwerty/do ~@(map #(α-convert % env) body)))
+
+(defmethod α-convert-seq 'qwerty/values [[_ & body] env]
+  `(qwerty/values ~@(map #(α-convert % env) body)))
 
 (defmethod α-convert-seq 'qwerty/let* [[_ bindings body] env]
   (let [{:keys [bindings env]} (reduce
@@ -124,6 +127,9 @@
   #{})
 
 (defmethod free-variables-seq 'qwerty/new [_]
+  #{})
+
+(defmethod free-variables-seq 'qwerty/comment [_]
   #{})
 
 (defmethod free-variables-seq 'qwerty/do [[_ & body]]
@@ -184,6 +190,9 @@
   `(qwerty/. ~func ~@(for [a args] (close-over a variables this-name))))
 
 (defmethod close-over-seq 'qwerty/.- [exp variables this-name]
+  exp)
+
+(defmethod close-over-seq 'qwerty/comment [exp variables this-name]
   exp)
 
 (defmethod close-over-seq 'qwerty/do [[_ & body] variables this-name]
@@ -316,7 +325,9 @@
      (qwerty/do ~@(map lower body))))
 
 (defmethod lower-seq 'qwerty/. [[_ func & args]]
-  `(qwerty/. ~func ~@args))
+  `(qwerty/do
+     (qwerty/comment ".")
+     (qwerty/. ~func ~@args)))
 
 (defmethod lower-seq 'qwerty/do [[_ & body]]
   (cons 'qwerty/do (map lower body)))

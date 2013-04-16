@@ -65,11 +65,12 @@
 (qwerty/defgofun main ()
                  (())
                  (qwerty/do
-                  (qwerty/results (a b c) ((qwerty/fn* () (qwerty/values "one" "two" "three")))
-                                  (qwerty/do
-                                   (println a)
-                                   (println b)
-                                   (println c)))
+                  (qwerty/let* ((one "one"))
+                               (qwerty/results (a b c) ((qwerty/fn* () (qwerty/values one "two" "three")))
+                                               (qwerty/do
+                                                (println a)
+                                                (println b)
+                                                (println c))))
                   (println "x")
                   ;; (println (iadd (stdin-int)
                   ;;                (stdin-int)))
