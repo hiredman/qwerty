@@ -51,6 +51,13 @@
 (defmethod free-variables-seq 'qwerty/cast [[_ c v]]
   (free-variables v))
 
+(defmethod free-variables-seq 'qwerty/results [[_ locals exp body]]
+  (into (free-variables exp)
+        (s/difference (free-variables body) (set locals))))
+
+(defmethod free-variables-seq 'qwerty/values [[_ & args]]
+  (set (mapcat free-variables args)))
+
 (defmethod free-variables-seq 'qwerty/let* [[_ bindings body]]
   (:free (let [b (gensym)]
            (reduce
@@ -119,11 +126,48 @@
 (defmethod close-over-seq 'qwerty/goderef [expr variables this-name]
   expr)
 
+
+(defmethod close-over-seq 'qwerty/values [[_ & args] variables this-name]
+  `(qwerty/values ~@(for [a args] (close-over a variables this-name))))
+
 (defmethod close-over-seq 'qwerty/set! [[_ f v] variables this-name]
   `(qwerty/set! ~f ~(close-over v variables this-name)))
 
 (defmethod close-over-seq 'qwerty/cast [[_ t v] variables this-name]
   `(qwerty/cast ~t ~(close-over v variables this-name)))
+
+(defmulti return-count type)
+(defmulti return-count-seq first)
+
+(defmethod return-count clojure.lang.ISeq [s]
+  (return-count-seq s))
+
+(defmethod return-count :default [s]
+  [1])
+
+(defmethod return-count-seq 'qwerty/values [[_ & args]]
+  [(count args)])
+
+(defmethod return-count-seq 'qwerty/fn* [[_ args body]]
+  (return-count body))
+
+(defmethod return-count-seq 'qwerty/let* [[_ bindings body]]
+  (return-count body))
+
+(defmethod return-count-seq 'qwerty/do [[_ & body]]
+  (mapcat return-count body))
+
+(defmethod return-count-seq 'qwerty/set! [_]
+  [1])
+
+(defmethod return-count-seq 'qwerty/. [_]
+  [1])
+
+(defmethod return-count-seq 'qwerty/.- [_]
+  [1])
+
+(defmethod return-count-seq 'qwerty/+ [_]
+  [1])
 
 (defmulti lower type)
 
@@ -153,14 +197,15 @@
         constructor (gensym 'Cfn)
         lowered-body (lower body)
         free-in-body (remove (set args) (free-variables lowered-body))
-        this-name (gensym 'this)]
+        this-name (gensym 'this)
+        return-types (repeat (apply max (return-count form)) 'interface)]
     `(qwerty/do
        (qwerty/defgofun ~function-name ~(cons this-name args)
-         ((~struct-pointer ~@(repeat (count args) 'interface)) ~'interface)
+         ((~struct-pointer ~@(repeat (count args) 'interface)) ~return-types)
          (qwerty/do
            (qwerty/comment "line" ~(:line (meta form)))
            ~(close-over lowered-body (set free-in-body) this-name)))
-       (qwerty/type ~function-type-name ((~struct-pointer ~@(repeat (count args) 'interface)) ~'interface))
+       (qwerty/type ~function-type-name ((~struct-pointer ~@(repeat (count args) 'interface)) ~return-types))
        (qwerty/struct ~struct-name
                       ~@(for [v free-in-body
                               i [v 'interface]]
@@ -215,6 +260,12 @@
 (defmethod lower-seq 'qwerty/comment [exp]
   exp)
 
+(defmethod lower-seq 'qwerty/values [[_ & args]]
+  (let [args (for [a args]
+               (list (gensym 'a) (lower a)))]
+    `(qwerty/let* (~@args)
+                  (qwerty/values ~@(map first args)))))
+
 (defmethod lower-seq 'qwerty/nil? [[_ e]]
   (let [r (gensym 'r)]
     `(qwerty/let* ((~r ~(lower e)))
@@ -236,6 +287,18 @@
   (let [a_ (gensym 'v)]
     `(qwerty/let* ((~a_ ~(lower v)))
                   (qwerty/godef ~n ~a_))))
+
+(defmethod lower-seq 'qwerty/results [[_ values [op & args] body]]
+  (let [op-n (gensym 'op)
+        args (for [a args]
+               (list (gensym 'a) (lower a)))
+        v (gensym 'v)
+        f (gensym 'f)]
+    `(qwerty/let* ((~op-n ~(lower op))
+                   ~@args
+                   (~f (qwerty/.- ~op-n ~'_fun)))
+                  (qwerty/results ~values (qwerty/. ~f ~op-n ~@(map first args))
+                                  ~(lower body)))))
 
 (defmethod lower-seq :default [form]
   (let [[fun & args] form]
@@ -293,6 +356,7 @@
   (go (last s)))
 
 (defmethod go-seq 'qwerty/defgofun [[_ fun-name args types & body]]
+  (println "/*" (pr-str types) "*/")
   (binding [*scope* :function]
     (println "func" fun-name (str "(" (apply str (interpose \, (map
                                                                 (fn [arg-name type]
@@ -301,10 +365,18 @@
                                                                          "interface {}"
                                                                          type)))
                                                                 args (first types))))
-                                  ")") (str (when (> (count types) 1)
-                                              (if (= 'interface (last types))
-                                                "interface {}"
-                                                (last types)))) "{")
+                                  ")") (str "(" (when (> (count types) 1)
+                                                  (if (seq? (last types))
+                                                    (apply str
+                                                           (interpose \,
+                                                                      (for [i (last types)]
+                                                                        (if (= 'interface i)
+                                                                          "interface {}"
+                                                                          i))))
+                                                    (if (= 'interface (last types))
+                                                      "interface {}"
+                                                      (last types))))
+                                            ")") "{")
     (binding [*context* (if (> (count types) 1)
                           :return
                           :statement)]
@@ -321,9 +393,17 @@
                                         (if (= x 'interface)
                                           "interface {}"
                                           x)))) ") ")
-  (if (= 'interface (last type-expression))
-    (print "interface {}")
-    (print (last type-expression)))
+  (print (str "(" (if (seq? (last type-expression))
+                    (apply str
+                           (interpose \,
+                                      (for [i (last type-expression)]
+                                        (if (= 'interface i)
+                                          "interface {}"
+                                          i))))
+                    (if (= 'interface (last type-expression))
+                      "interface {}"
+                      (last type-expression)))
+              ")"))
   (println)
   (println))
 
@@ -424,6 +504,16 @@
   (print "(" a "+" b ")")
   (if (= :return *context*)
     (println)))
+
+(defmethod go-seq 'qwerty/values [[_  & args]]
+  (assert (= *context* :return))
+  (println "return" (apply str (interpose \, args))))
+
+(defmethod go-seq 'qwerty/results [[_  names exp body]]
+  (print (apply str (interpose \, names)) ":=")
+  (go exp)
+  (println)
+  (go body))
 
 (defmethod go-seq 'qwerty/godef [[_ n b]]
   (println "var" (munge n) "=" b))

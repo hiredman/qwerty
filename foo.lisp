@@ -5,6 +5,19 @@
                car interface
                cdr interface)
 
+(qwerty/struct Var
+               name string
+               value interface
+               macro bool)
+
+(qwerty/godef make-var (qwerty/fn* (name value)
+                                   (qwerty/let* ((v (qwerty/new Var))
+                                                 (n (qwerty/cast string name)))
+                                                (qwerty/do
+                                                 (qwerty/set! (qwerty/.- v name) n)
+                                                 (qwerty/set! (qwerty/.- v value) value)
+                                                 v))))
+
 (qwerty/godef println
               (qwerty/fn* (x)
                           (qwerty/do
@@ -38,15 +51,29 @@
                   (qwerty/. fmt.Scanf "%c" (qwerty/goderef x))
                   x))
 
+(qwerty/defgofun stdin_int_ ()
+                 (() int)
+                 (qwerty/do
+                  (qwerty/local x int)
+                  (qwerty/. fmt.Scanf "%d" (qwerty/goderef x))
+                  x))
+
+(qwerty/godef stdin-int (qwerty/fn* () (qwerty/. stdin_int_)))
+
 (qwerty/godef stdin-rune (qwerty/fn* () (qwerty/. stdin_rune_)))
 
 (qwerty/defgofun main ()
                  (())
                  (qwerty/do
+                  (qwerty/results (a b c) ((qwerty/fn* () (qwerty/values "one" "two" "three")))
+                                  (qwerty/do
+                                   (println a)
+                                   (println b)
+                                   (println c)))
                   (println "x")
-                  (println (stdin-rune))
-                  (println "y")
-                  (println (stdin-rune))
+                  ;; (println (iadd (stdin-int)
+                  ;;                (stdin-int)))
+                  (println (qwerty/nil? nil))
                   (println (iadd 1 2))
                   (println (cdr (cons "x" "y")))
                   (println "Hello World")))
