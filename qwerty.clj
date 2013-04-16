@@ -1,13 +1,100 @@
 #!/usr/bin/java -jar /Users/hiredman/src/clojure/target/clojure-1.5.0-master-SNAPSHOT.jar
 
-;; needs more α-conversion
-
 (require '[clojure.walk :as w]
          '[clojure.pprint :refer [pprint]]
          '[clojure.set :as s])
 
 (declare ^:dynamic *context*)
 (declare ^:dynamic *scope*)
+
+(defmulti α-convert (fn [exp env] (type exp)))
+(defmulti α-convert-seq (fn [exp env] (first exp)))
+
+(defmethod α-convert clojure.lang.Symbol [s env]
+  (if (contains? env s)
+    (get env s)
+    s))
+
+(defmethod α-convert :default [s env] s)
+
+(defmethod α-convert clojure.lang.ISeq [s env]
+  (α-convert-seq s env))
+
+(defmethod α-convert-seq 'qwerty/struct [s env]
+  s)
+
+(defmethod α-convert-seq 'qwerty/new [s env]
+  s)
+
+(defmethod α-convert-seq 'qwerty/local [s env]
+  s)
+
+(defmethod α-convert-seq 'qwerty/cast [[_ t v] env]
+  `(qwerty/cast ~t ~(α-convert v env)))
+
+(defmethod α-convert-seq 'qwerty/nil? [[_ v] env]
+  `(qwerty/nil? ~(α-convert v env)))
+
+(defmethod α-convert-seq 'qwerty/goderef [[_ v] env]
+  `(qwerty/goderef ~(α-convert v env)))
+
+(defmethod α-convert-seq 'qwerty/+ [[_ a b] env]
+  `(qwerty/+ ~(α-convert a env) ~(α-convert b env)))
+
+(defmethod α-convert-seq 'qwerty/set! [[_ f v] env]
+  `(qwerty/set! ~(α-convert f env) ~(α-convert v env)))
+
+(defmethod α-convert-seq 'qwerty/.- [[_ target field] env]
+  `(qwerty/.- ~(α-convert target env) ~field))
+
+(defmethod α-convert-seq 'qwerty/. [[_ function & args] env]
+  `(qwerty/. ~function ~@(map #(α-convert % env) args)))
+
+(defmethod α-convert-seq 'qwerty/godef [[_ n body] env]
+  `(qwerty/godef ~n ~(α-convert body env)))
+
+(defmethod α-convert-seq 'qwerty/fn* [[_ args body] env]
+  (let [args (for [a args]
+               [a (gensym a)])]
+    `(qwerty/fn* ~(map second args)
+                 ~(α-convert body (into env args)))))
+
+(defmethod α-convert-seq 'qwerty/results [[_ values exp body] env]
+  (let [args (for [a values]
+               [a (gensym a)])]
+    `(qwerty/results ~(map second args)
+                     ~exp
+                     ~(α-convert body (into env args)))))
+
+(defmethod α-convert-seq 'qwerty/defgofun [[_ name args types body] env]
+  (let [args (for [a args]
+               [a (gensym a)])]
+    `(qwerty/defgofun
+       ~name
+       ~(map second args)
+       ~types
+       ~(α-convert body (into env args)))))
+
+(defmethod α-convert-seq 'qwerty/do [[_ & body] env]
+  `(qwerty/do ~@(map #(α-convert % env) body)))
+
+(defmethod α-convert-seq 'qwerty/let* [[_ bindings body] env]
+  (let [{:keys [bindings env]} (reduce
+                                (fn [{:keys [bindings env]} [n v]]
+                                  (let [nn (gensym n)]
+                                    {:bindings (conj bindings (list nn (α-convert v env)))
+                                     :env (assoc env n nn)}))
+                                {:bindings []
+                                 :env env} bindings)]
+    `(qwerty/let* ~(seq bindings)
+                  ~(α-convert body env))))
+
+
+(defmethod α-convert-seq :default [exp env]
+  (assert (not (and (symbol? (first exp))
+                    (= "qwerty" (namespace (first exp)))))
+          (first exp))
+  (map #(α-convert % env) exp))
 
 (defmulti free-variables type)
 (defmulti free-variables-seq first)
@@ -289,16 +376,23 @@
                   (qwerty/godef ~n ~a_))))
 
 (defmethod lower-seq 'qwerty/results [[_ values [op & args] body]]
-  (let [op-n (gensym 'op)
-        args (for [a args]
-               (list (gensym 'a) (lower a)))
-        v (gensym 'v)
-        f (gensym 'f)]
-    `(qwerty/let* ((~op-n ~(lower op))
-                   ~@args
-                   (~f (qwerty/.- ~op-n ~'_fun)))
-                  (qwerty/results ~values (qwerty/. ~f ~op-n ~@(map first args))
-                                  ~(lower body)))))
+  (if (= op 'qwerty/.)
+    (let [m (first args)
+          args (for [a (rest args)]
+                 (list (gensym 'a) (lower a)))]
+      `(qwerty/let* ~args
+                    (qwerty/results ~values (qwerty/. ~m ~@(map first args))
+                                    ~(lower body))))
+    (let [op-n (gensym 'op)
+          args (for [a args]
+                 (list (gensym 'a) (lower a)))
+          v (gensym 'v)
+          f (gensym 'f)]
+      `(qwerty/let* ((~op-n ~(lower op))
+                     ~@args
+                     (~f (qwerty/.- ~op-n ~'_fun)))
+                    (qwerty/results ~values (qwerty/. ~f ~op-n ~@(map first args))
+                                    ~(lower body))))))
 
 (defmethod lower-seq :default [form]
   (let [[fun & args] form]
@@ -356,7 +450,6 @@
   (go (last s)))
 
 (defmethod go-seq 'qwerty/defgofun [[_ fun-name args types & body]]
-  (println "/*" (pr-str types) "*/")
   (binding [*scope* :function]
     (println "func" fun-name (str "(" (apply str (interpose \, (map
                                                                 (fn [arg-name type]
@@ -640,12 +733,10 @@
        (println "package " (second form))
        (and (seq? form) (= (first form) 'qwerty/import))
        (println "import " (pr-str (second form)))
-       (and (seq? form) (= (first form) 'defgo))
-       (printf "func %s (){\n}\n\n" (second form))
        :else (do
                ;; (pprint (f (lower form)))
                ;; (println)
-               (go (f (lower form))))
+               (go (f (lower (α-convert form {})))))
        #_(let [{:keys [declarations expression]} (lower form)]
            (binding [*context* :statement
                      *scope* :package]
