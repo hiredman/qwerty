@@ -1,6 +1,6 @@
-(qwerty/package qwerty)
+(qwerty/package main)
 (qwerty/import "fmt")
-(qwerty/import "types")
+;; (qwerty/import "types")
 
 (qwerty/struct Cons
                car interface
@@ -11,26 +11,26 @@
                value interface
                macro bool)
 
-;; (qwerty/definterface IFn
+(qwerty/definterface IFn
                      
-;;                      (invoke0_1 () (result1))
-;;                      (invoke0_2 () (result1 result2))
-;;                      (invoke0_3 () (result1 result2 result3))
-;;                      (invoke0_4 () (result1 result2 result3 result4))
+                     (invoke0_1 () (result1))
+                     (invoke0_2 () (result1 result2))
+                     (invoke0_3 () (result1 result2 result3))
+                     (invoke0_4 () (result1 result2 result3 result4))
 
-;;                      (invoke1_1 (a1) (result1))
-;;                      (invoke1_2 (a1) (result1 result2))
-;;                      (invoke1_3 (a1) (result1 result2 result3))
-;;                      (invoke1_4 (a1) (result1 result2 result3 result4))
+                     (invoke1_1 (a1) (result1))
+                     (invoke1_2 (a1) (result1 result2))
+                     (invoke1_3 (a1) (result1 result2 result3))
+                     (invoke1_4 (a1) (result1 result2 result3 result4))
 
-;;                      (invoke2_1 (a1 a2) (result1))
-;;                      (invoke2_2 (a1 a2) (result1 result2))
-;;                      (invoke2_3 (a1 a2) (result1 result2 result3))
-;;                      (invoke2_4 (a1 a2) (result1 result2 result3 result4))
-;;                      )
+                     (invoke2_1 (a1 a2) (result1))
+                     (invoke2_2 (a1 a2) (result1 result2))
+                     (invoke2_3 (a1 a2) (result1 result2 result3))
+                     (invoke2_4 (a1 a2) (result1 result2 result3 result4))
+                     )
 
-;; #_(qwerty/defmethod invoke0 Ts ()
-;;                     )
+;; (qwerty/defgomethod invoke0_1 Var (bar) (foo)
+;;                   "foo")
 
 (qwerty/godef make-var (qwerty/fn* (name value)
                                    (qwerty/let* ((v (qwerty/new Var))
@@ -88,7 +88,7 @@
 (qwerty/defgofun test1 ()
                  (())
                  (qwerty/do
-                  (qwerty/let* ((one "one"))
+                  #_(qwerty/let* ((one "one"))
                                (qwerty/results (a b c) ((qwerty/fn* () (qwerty/values one "two" "three")))
                                                (qwerty/do
                                                 (println a)
@@ -109,3 +109,36 @@
                   #_(qwerty/if true
                                (println "TRUE")
                                (println "FALSE"))))
+
+
+;; (qwerty/godef foo
+;;               (qwerty/cast IFn
+;;                            (qwerty/fn* (x)
+;;                                        (qwerty/do
+;;                                         (qwerty/. fmt.Println x)
+;;                                         nil))))
+
+;; (qwerty/defgofun main ()
+;;                  (())
+;;                  (foo "hello world"))
+
+
+;; (qwerty/defgofun main ()
+;;                  (())
+;;                  ((qwerty/fn* ()
+;;                               (qwerty/do
+;;                                (qwerty/. fmt.Println "Hello World")
+;;                                nil))))
+
+;; (qwerty/defgofun main ()
+;;                  (())
+;;                  (qwerty/let* ((v (qwerty/new Var)))
+;;                               (qwerty/. fmt.Println (qwerty/go-method-call v invoke0_1))))
+
+
+;; (qwerty/select
+;;  (qwerty/go<- ((i3,ok) ch)
+;;               body)
+
+;;  (qwerty/go-> (value ch)
+;;               body))

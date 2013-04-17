@@ -55,6 +55,12 @@
 (defmethod α-convert-seq 'qwerty/godef [[_ n body] env]
   `(qwerty/godef ~n ~(α-convert body env)))
 
+(defmethod α-convert-seq 'qwerty/defgomethod [[_ method-name type-name args returns body] env]
+  (let [new-env (for [a args]
+                  [a (gensym a)])]
+    `(qwerty/defgomethod ~method-name ~type-name ~(map first new-env) ~returns
+       ~(α-convert body (into env new-env)))))
+
 (defmethod α-convert-seq 'qwerty/fn* [[_ args body] env]
   (let [args (for [a args]
                [a (gensym a)])]
@@ -104,6 +110,14 @@
    `(qwerty/if ~(α-convert condition env)
       ~(α-convert then env)
       ~(α-convert else env))))
+
+(defmethod α-convert-seq 'qwerty/definterface [form env]
+  form)
+
+(defmethod α-convert-seq 'qwerty/go-method-call [[_ target method-name & args] env]
+  `(qwerty/go-method-call ~(α-convert target env) ~method-name
+                          ~@(for [a args]
+                              (α-convert a env))))
 
 
 (defmethod α-convert-seq :default [exp env]
@@ -339,9 +353,12 @@
 (defmethod lower clojure.lang.ISeq [s]
   (lower-seq s))
 
+
+(def max-arity 2)
+(def max-returns 4)
+
 (defmethod lower-seq 'qwerty/fn* [form]
   (let [[_ args body] form
-        function-name (gensym 'fn)
         function-type-name (gensym 'Tfn)
         struct-name (gensym 'Sfn)
         struct-pointer (symbol (str "*" (name struct-name)))
@@ -352,17 +369,25 @@
         this-name (gensym 'this)
         return-types (repeat (apply max (return-count form)) 'interface)]
     `(qwerty/do
-       (qwerty/defgofun ~function-name ~(cons this-name args)
-         ((~struct-pointer ~@(repeat (count args) 'interface)) ~return-types)
-         (qwerty/do
-           (qwerty/comment "line" ~(:line (meta form)))
-           ~(close-over lowered-body (set free-in-body) this-name)))
-       (qwerty/type ~function-type-name ((~struct-pointer ~@(repeat (count args) 'interface)) ~return-types))
        (qwerty/struct ~struct-name
                       ~@(doall (for [v free-in-body
                                      i [v 'interface]]
-                                 i))
-                      ~'_fun ~function-type-name)
+                                 i)))
+       ~@(for [arg-count (range 0 (inc max-arity))
+               return-count (range 1 (inc max-returns))
+               :let [function-name (symbol (str "invoke" arg-count "_" return-count))]]
+           (if (and (= arg-count (count args))
+                    (= return-count (count return-types)))
+             `(qwerty/defgomethod ~function-name ~struct-pointer ~(cons this-name args)
+                ~(repeatedly return-count #(gensym 'r))
+                (qwerty/do
+                  (qwerty/comment "line" ~(:line (meta form)))
+                  ~(close-over lowered-body (set free-in-body) this-name)))
+             `(qwerty/defgomethod ~function-name ~struct-pointer ~(cons this-name (repeatedly arg-count #(gensym 'a)))
+                ~(repeatedly return-count #(gensym 'r))
+                (qwerty/do
+                  (qwerty/. ~'panic ~(str "bad arity " arg-count "-" return-count))
+                  (qwerty/values ~@(repeat return-count nil))))))
        (qwerty/defgofun ~constructor ~(seq free-in-body)
          (~(repeat (count free-in-body) 'interface) ~(symbol (str "*" (name struct-name))))
          ~(lower
@@ -371,13 +396,16 @@
                            (qwerty/do
                              ~@(doall (for [v free-in-body]
                                         `(qwerty/set! (qwerty/.- ~'c ~v) ~v)))
-                             (qwerty/set! (qwerty/.- ~'c ~'_fun) ~function-name)
                              ~'c)))))
        (qwerty/. ~constructor ~@(doall free-in-body)))))
 
 (defmethod lower-seq 'qwerty/defgofun [[_ function-name args types & body]]
   `(qwerty/defgofun ~function-name ~(or args ()) ~types
      ~(lower `(qwerty/do ~@body))))
+
+(defmethod lower-seq 'qwerty/defgomethod [[_ method-name type-name args returns body]]
+  `(qwerty/defgomethod ~method-name ~type-name ~args ~returns
+     ~(lower body)))
 
 (defmethod lower-seq 'qwerty/. [[_ func & args]]
   (if (every? (complement coll?) args)
@@ -393,7 +421,8 @@
      ~@(doall (for [[n v] bindings]
                 (cond
                  (and (seq? v)
-                      (= 'qwerty/cast (first v)))
+                      (or (= 'qwerty/cast (first v))
+                          (= 'qwerty/type-convert (first v))))
                  `(qwerty/local ~n ~(second v))
                  (and (seq? v)
                       (= 'qwerty/new (first v)))
@@ -416,6 +445,14 @@
 (defmethod lower-seq 'qwerty/struct [expr]
   expr)
 
+(defmethod lower-seq 'qwerty/type-convert [[_ t e]]
+  (if (coll? e)
+    (let [tc (gensym 'tc)]
+      (lower
+       `(qwerty/let* ((~tc ~(lower e)))
+                     (qwerty/type-convert ~t ~tc))))
+    `(qwerty/type-convert ~t ~e)))
+
 (defmethod lower-seq 'qwerty/new [expr]
   expr)
 
@@ -428,7 +465,13 @@
 
 (defn atomic? [exp]
   (or (not (coll? exp))
-      (every? (complement coll?) exp)))
+      (and (every? (complement coll?) exp)
+           (symbol? (first exp))
+           (= "qwerty" (namespace (first exp)))
+           (not= 'qwerty/do (first exp))
+           (not= 'qwerty/results (first exp))
+           (not= 'qwerty/values (first exp))
+           (not= 'qwerty/commment (first exp)))))
 
 (defmethod lower-seq 'qwerty/cast [[_ type v]]
   (if (atomic? v)
@@ -464,7 +507,7 @@
     (cond
      (atomic? lv)
      `(qwerty/set! ~f ~lv)
-     (= 'qwerty/do (first v))
+     (= 'qwerty/do (first lv))
      `(qwerty/do ~@(rest (butlast lv))
                  ~(lower `(qwerty/set! ~f ~(lower (last lv)))))
 
@@ -482,15 +525,17 @@
     `(qwerty/+ ~a ~b)))
 
 (defmethod lower-seq 'qwerty/godef [[_ n v]]
-  (if (coll? v)
+  (if (not (atomic? v))
     (let [a_ (gensym 'v)]
       (lower
        `(qwerty/let* ((~a_ ~(lower v)))
                      (qwerty/godef ~n ~a_))))
-    `(qwerty/godef ~n ~v)))
+    `(qwerty/set! ~n ~v)))
 
+;;complicated
 (defmethod lower-seq 'qwerty/results [[_ values [op & args] body]]
-  (if (= op 'qwerty/.)
+  (if (or (= op 'qwerty/.)
+          (= op 'qwerty/go-method-call))
     (if (every? (complement coll?) args)
       `(qwerty/results ~values (qwerty/. ~@args)
                        ~(lower body))
@@ -498,7 +543,7 @@
             args (for [a (rest args)]
                    (list (gensym 'a) (lower a)))]
         (lower `(qwerty/let* ~args
-                             (qwerty/results ~values (qwerty/. ~m ~@(doall (map first args)))
+                             (qwerty/results ~values (~op ~m ~@(doall (map first args)))
                                              ~(lower body))))))
     (let [op-n (gensym 'op)
           args (for [a args]
@@ -518,21 +563,40 @@
 (defmethod lower-seq 'qwerty/type [exp]
   exp)
 
+(defmethod lower-seq 'qwerty/definterface [exp]
+  exp)
+
+(defmethod lower-seq 'qwerty/go-method-call [[_ target method & args]]
+  (if (and (not (coll? target))
+           (every? (complement coll?) args))
+    `(qwerty/go-method-call ~target ~method ~@args)
+    (let [t (gensym 'target)
+          bindings (for [a args]
+                     (list (gensym 'a) (lower  a)))]
+      (lower
+       `(qwerty/let* (~t ~(lower target)
+                         ~@bindings)
+                     (qwerty/go-method-call ~t ~method ~@(map first bindings)))))))
+
 (defmethod lower-seq :default [form]
-  (let [[fun & args] form]
-    (assert (and (symbol? fun)
-                 (not= "qwerty" (namespace fun))) (with-out-str (pprint form)))
-    (let [f (gensym 'f)
-          lowered-args (map lower args)
-          bound-args (for [a lowered-args]
-                       (if (symbol? a)
-                         (list a a)
-                         (list (gensym 'arg) (lower a))))]
-      (lower `(qwerty/let* ((~f (qwerty/.- ~fun ~'_fun))
-                            ~@(remove (fn [[n v]] (= n v)) bound-args))
+  (assert (or (coll? (first form))
+              (not= "qwerty" (namespace (first form)))) (with-out-str (pprint form)))
+  (if (not (every? symbol? form))
+    (let [lowered (map lower form)
+          bindings (for [l lowered]
+                     (if (symbol? l)
+                       (list l l)
+                       (list (gensym 'arg) l)))]
+      (lower `(qwerty/let* (~@(remove (fn [[n v]] (= n v)) bindings))
                            (qwerty/do
                              (qwerty/comment "line" ~(:line (meta form)))
-                             (qwerty/. ~f ~fun ~@(map first bound-args))))))))
+                             ~(lower (map first bindings))))))
+    (let [f (gensym 'f)]
+      (lower `(qwerty/let* ((~f (qwerty/type-convert ~'IFn ~(first form))))
+                           (qwerty/do
+                             (qwerty/comment "line" ~(:line (meta form)))
+                             (qwerty/go-method-call ~f ~(symbol (str "invoke" (count (rest form)) "_1"))
+                                                     ~@(rest form))))))))
 
 (defmulti go type)
 
@@ -618,6 +682,23 @@
       (go (cons 'qwerty/do body)))
     (when-not (> (count types) 1)
       (println))
+    (println "}")
+    (println)))
+
+
+(defmethod go-seq 'qwerty/defgomethod [[_ method-name type-name args returns body]]
+  (binding [*scope* :function]
+    (let [[this-name & args] args]
+      (println "func (" this-name type-name ")" method-name
+               (str "(" (apply str (interpose \, (for [arg args]
+                                                   (str arg " interface{}")))) ")")
+               (str "(" (apply str (interpose \, (repeat (count returns) "interface{}"))) ")")
+               "{"))
+    (binding [*context* (if-not (zero? (count returns))
+                          :return
+                          :statement)]
+      (go body))
+    (println)
     (println "}")
     (println)))
 
@@ -716,6 +797,18 @@
   (if (= :return *context*)
     (println)))
 
+(defmethod go-seq 'qwerty/go-method-call [[_ target method & args]]
+  (if (= :return *context*)
+    (print "return"))
+  (print " " (str target "." method) "(")
+  (binding [*context* :statement]
+    (doseq [v args]
+      (go v)
+      (print ",")))
+  (print ")")
+  (if (= :return *context*)
+    (println)))
+
 (defmethod go-seq 'qwerty/.- [[_ obj field]]
   (if (= :return *context*)
     (print "return"))
@@ -757,6 +850,13 @@
   (if (= :return *context*)
     (println)))
 
+(defmethod go-seq 'qwerty/type-convert [[_ type-name value]]
+  (if (= :return *context*)
+    (print "return"))
+  (print (str type-name "("value ")"))
+  (if (= :return *context*)
+    (println)))
+
 (defmethod go-seq 'qwerty/+ [[_ a b]]
   (if (= :return *context*)
     (print "return"))
@@ -766,7 +866,10 @@
 
 (defmethod go-seq 'qwerty/values [[_  & args]]
   (assert (= *context* :return))
-  (println "return" (apply str (interpose \, args))))
+  (println "return" (apply str (interpose \, (for [a args]
+                                               (if (nil? a)
+                                                 "nil"
+                                                 a))))))
 
 (defmethod go-seq 'qwerty/results [[_  names exp body]]
   (print (apply str (interpose \, names)) ":=")
@@ -774,8 +877,12 @@
   (println)
   (go body))
 
-(defmethod go-seq 'qwerty/godef [[_ n b]]
-  (println "var" (munge n) "=" b))
+(defmethod go-seq 'qwerty/definterface [[_ interface-name & methods]]
+  (println "type" interface-name "interface {")
+  (doseq [[name args returns] methods]
+    (println name "(" (apply str (interpose \, (repeat (count args) "interface{}"))) ")"
+             "(" (apply str (interpose \, (repeat (count returns) "interface{}"))) ")"))
+  (println "}"))
 
 (defmethod go-seq 'qwerty/comment [[_ & args]]
   (println "/*" (apply print-str args) "*/"))
@@ -803,6 +910,7 @@
        ('#{qwerty/defgofun
            qwerty/type
            qwerty/struct
+           qwerty/defgomethod
            } (first form))))
 
 (defmethod raise-decls-seq 'qwerty/defgofun [[_ function-name args types body]]
