@@ -1,5 +1,6 @@
-(qwerty/package main)
+(qwerty/package qwerty)
 (qwerty/import "fmt")
+(qwerty/import "types")
 
 (qwerty/struct Cons
                car interface
@@ -10,12 +11,34 @@
                value interface
                macro bool)
 
+;; (qwerty/definterface IFn
+                     
+;;                      (invoke0_1 () (result1))
+;;                      (invoke0_2 () (result1 result2))
+;;                      (invoke0_3 () (result1 result2 result3))
+;;                      (invoke0_4 () (result1 result2 result3 result4))
+
+;;                      (invoke1_1 (a1) (result1))
+;;                      (invoke1_2 (a1) (result1 result2))
+;;                      (invoke1_3 (a1) (result1 result2 result3))
+;;                      (invoke1_4 (a1) (result1 result2 result3 result4))
+
+;;                      (invoke2_1 (a1 a2) (result1))
+;;                      (invoke2_2 (a1 a2) (result1 result2))
+;;                      (invoke2_3 (a1 a2) (result1 result2 result3))
+;;                      (invoke2_4 (a1 a2) (result1 result2 result3 result4))
+;;                      )
+
+;; #_(qwerty/defmethod invoke0 Ts ()
+;;                     )
+
 (qwerty/godef make-var (qwerty/fn* (name value)
                                    (qwerty/let* ((v (qwerty/new Var))
                                                  (n (qwerty/cast string name)))
                                                 (qwerty/do
                                                  (qwerty/set! (qwerty/.- v name) n)
                                                  (qwerty/set! (qwerty/.- v value) value)
+                                                 (qwerty/set! (qwerty/.- v macro) false)
                                                  v))))
 
 (qwerty/godef println
@@ -62,7 +85,7 @@
 
 (qwerty/godef stdin-rune (qwerty/fn* () (qwerty/. stdin_rune_)))
 
-(qwerty/defgofun main ()
+(qwerty/defgofun test1 ()
                  (())
                  (qwerty/do
                   (qwerty/let* ((one "one"))
@@ -78,3 +101,11 @@
                   (println (iadd 1 2))
                   (println (cdr (cons "x" "y")))
                   (println "Hello World")))
+
+(qwerty/defgofun main ()
+                 (())
+                 (qwerty/do
+                  (qwerty/. test1)
+                  #_(qwerty/if true
+                               (println "TRUE")
+                               (println "FALSE"))))
