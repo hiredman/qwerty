@@ -7,6 +7,8 @@
 (declare ^:dynamic *context*)
 (declare ^:dynamic *scope*)
 
+;; alpha conversion
+
 (defmulti α-convert (fn [exp env] (type exp)))
 (defmulti α-convert-seq (fn [exp env] (first exp)))
 
@@ -56,8 +58,9 @@
 (defmethod α-convert-seq 'qwerty/fn* [[_ args body] env]
   (let [args (for [a args]
                [a (gensym a)])]
-    `(qwerty/fn* ~(map second args)
-                 ~(α-convert body (into env args)))))
+    (with-meta `(qwerty/fn* ~(map second args)
+                            ~(α-convert body (into env args)))
+      (meta env))))
 
 (defmethod α-convert-seq 'qwerty/results [[_ values exp body] env]
   (let [args (for [a values]
@@ -69,11 +72,13 @@
 (defmethod α-convert-seq 'qwerty/defgofun [[_ name args types body] env]
   (let [args (for [a args]
                [a (gensym a)])]
-    `(qwerty/defgofun
-       ~name
-       ~(map second args)
-       ~types
-       ~(α-convert body (into env args)))))
+    (with-meta
+      `(qwerty/defgofun
+         ~name
+         ~(map second args)
+         ~types
+         ~(α-convert body (into env args)))
+      (meta env))))
 
 (defmethod α-convert-seq 'qwerty/do [[_ & body] env]
   `(qwerty/do ~@(map #(α-convert % env) body)))
@@ -92,12 +97,19 @@
     `(qwerty/let* ~(seq bindings)
                   ~(α-convert body env))))
 
+(defmethod α-convert-seq 'qwerty/if [[_ condition then else] env]
+  `(qwerty/if ~(α-convert condition env)
+     ~(α-convert then env)
+     ~(α-convert else env)))
+
 
 (defmethod α-convert-seq :default [exp env]
   (assert (not (and (symbol? (first exp))
                     (= "qwerty" (namespace (first exp)))))
           (first exp))
-  (map #(α-convert % env) exp))
+  (with-meta (map #(α-convert % env) exp) (meta exp)))
+
+;; free variables
 
 (defmulti free-variables type)
 (defmulti free-variables-seq first)
@@ -106,6 +118,9 @@
   #{s})
 
 (defmethod free-variables java.lang.Number [s]
+  #{})
+
+(defmethod free-variables java.lang.Boolean [s]
   #{})
 
 (defmethod free-variables java.lang.String [s]
@@ -138,6 +153,11 @@
 (defmethod free-variables-seq 'qwerty/set! [[_ f v]]
   (free-variables v))
 
+(defmethod free-variables-seq 'qwerty/if [[_ condition then else]]
+  (into (into (free-variables condition)
+              (free-variables then))
+        (free-variables else)))
+
 (defmethod free-variables-seq 'qwerty/.- [_]
   #{})
 
@@ -166,6 +186,8 @@
   (into (free-variables a)
         (free-variables b)))
 
+;; close-over
+
 (defmulti close-over (fn [exp variables this-name] (type exp)))
 (defmulti close-over-seq (fn [exp variables this-name] (first exp)))
 
@@ -179,6 +201,9 @@
   exp)
 
 (defmethod close-over Long [exp variables this-name]
+  exp)
+
+(defmethod close-over Boolean [exp variables this-name]
   exp)
 
 (defmethod close-over nil [& _] nil)
@@ -232,6 +257,13 @@
 (defmethod close-over-seq 'qwerty/cast [[_ t v] variables this-name]
   `(qwerty/cast ~t ~(close-over v variables this-name)))
 
+(defmethod close-over-seq 'qwerty/if [[_ cond then else] variables this-name]
+  `(qwerty/if ~(close-over cond variables this-name)
+     ~(close-over then variables this-name)
+     ~(close-over else variables this-name)))
+
+;; return-count
+
 (defmulti return-count type)
 (defmulti return-count-seq first)
 
@@ -265,6 +297,15 @@
 (defmethod return-count-seq 'qwerty/+ [_]
   [1])
 
+(defmethod return-count-seq 'qwerty/if [[_ cond then else]]
+  (concat (return-count then)
+          (return-count else)))
+
+;; lower
+;; lowers lisp features in to go features
+;; lisp functions are structs (environment) and a go function pointer
+;; function invocation is invoking function pointer
+
 (defmulti lower type)
 
 (defmulti lower-seq first)
@@ -273,6 +314,9 @@
   s)
 
 (defmethod lower java.lang.String [s]
+  s)
+
+(defmethod lower java.lang.Boolean [s]
   s)
 
 (defmethod lower java.lang.Number [s]
@@ -325,9 +369,7 @@
      (qwerty/do ~@(map lower body))))
 
 (defmethod lower-seq 'qwerty/. [[_ func & args]]
-  `(qwerty/do
-     (qwerty/comment ".")
-     (qwerty/. ~func ~@args)))
+  `(qwerty/. ~func ~@args))
 
 (defmethod lower-seq 'qwerty/do [[_ & body]]
   (cons 'qwerty/do (map lower body)))
@@ -370,9 +412,11 @@
                   (qwerty/nil? ~r))))
 
 (defmethod lower-seq 'qwerty/set! [[_ f v]]
-  (let [r (gensym 'v)]
-    `(qwerty/let* ((~r ~(lower v)))
-                  (qwerty/set! ~f ~r))))
+  (if (not (coll? v))
+    `(qwerty/set! ~f ~v)
+    (let [r (gensym 'v)]
+      `(qwerty/let* ((~r ~(lower v)))
+                    (qwerty/set! ~f ~r)))))
 
 (defmethod lower-seq 'qwerty/+ [[_ a b]]
   (let [a_ (gensym 'a)
@@ -405,6 +449,17 @@
                     (qwerty/results ~values (qwerty/. ~f ~op-n ~@(map first args))
                                     ~(lower body))))))
 
+(defmethod lower-seq 'qwerty/if [[_ condition then else]]
+  (let [Φ (gensym)
+        c (gensym 'c)]
+    `(qwerty/let* ((~c ~(lower condition))
+                   (~Φ (qwerty/if ~c
+                         (qwerty/let* ((~Φ ~(lower then)))
+                           ~Φ)
+                         (qwerty/let* ((~Φ ~(lower else)))
+                           ~Φ))))
+                  ~Φ)))
+
 (defmethod lower-seq :default [form]
   (let [[fun & args] form]
     (assert (not= "qwerty" (namespace fun)) fun)
@@ -428,14 +483,31 @@
   (go-seq s))
 
 (defmethod go java.lang.String [s]
+  (if (= :return *context*)
+    (print "return"))
   (print " ")
   (pr s)
-  (print " "))
+  (print " ")
+  (if (= :return *context*)
+    (println)))
 
-(defmethod go java.lang.Long[s]
+(defmethod go java.lang.Long [s]
+  (if (= :return *context*)
+    (print "return"))
   (print " ")
   (pr s)
-  (print " "))
+  (print " ")
+  (if (= :return *context*)
+    (println)))
+
+(defmethod go java.lang.Boolean [s]
+  (if (= :return *context*)
+    (print "return"))
+  (print " ")
+  (pr s)
+  (print " ")
+  (if (= :return *context*)
+    (println)))
 
 (defmethod go clojure.lang.Symbol [s]
   (when (not= *scope* :package)
@@ -540,6 +612,20 @@
        (go v))
      (println)
      (recur `(qwerty/let* ((~n ~(last v))) ~body)))
+   (and (seq? v)
+        (= 'qwerty/if (first v)))
+   (let [[_ cond then else] v
+         label (gensym 'L)
+         end (gensym 'L)]
+     (println "if (!" cond ") { goto" label "}")
+     (go then)
+     (println)
+     (println (str label ":"))
+     (go else)
+     (println)
+     (println "goto" label)
+     (println (str end ":"))
+     (go body))
    (nil? v)
    (do
      (println "var" n "interface{}" "=" "nil")
