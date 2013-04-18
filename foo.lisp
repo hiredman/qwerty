@@ -40,6 +40,14 @@
 
                      )
 
+(qwerty/definterface ISeq
+                     (first () (r))
+                     (rest () (r)))
+
+(qwerty/defgofun NOP (arg)
+                 ((interface) interface)
+                 nil)
+
 
 (qwerty/godef the_vars (qwerty/make "map[string]Var"))
 
@@ -120,10 +128,11 @@
 (qwerty/defgofun main ()
                  (())
                  (qwerty/do
+                  (println ((qwerty/fn* () (qwerty/values 1 2))))
                   (qwerty/let* ((a "foo"))
                                (qwerty/labels
                                 start (qwerty/test (qwerty/nil? a) foo)
-                                      (qwerty/goto end)
+                                (qwerty/goto end)
                                 foo   (qwerty/do
                                        (println "here")
                                        (qwerty/set! a nil)

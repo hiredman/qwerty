@@ -322,19 +322,32 @@
                                  i)))
        ~@(for [arg-count (range 0 (inc max-arity))
                return-count (range 1 (inc max-returns))
-               :let [function-name (symbol (str "invoke" arg-count "_" return-count))]]
-           (if (and (= arg-count (count args))
-                    (= return-count (count return-types)))
-             `(qwerty/defgomethod ~function-name ~struct-pointer ~(cons this-name args)
-                ~(repeatedly return-count #(gensym 'r))
-                (qwerty/do
-                  (qwerty/comment "line" ~(:line (meta form)))
-                  ~(close-over lowered-body (set free-in-body) this-name)))
-             `(qwerty/defgomethod ~function-name ~struct-pointer ~(cons this-name (repeatedly arg-count #(gensym 'a)))
-                ~(repeatedly return-count #(gensym 'r))
-                (qwerty/do
-                  (qwerty/. ~'panic ~(str "bad arity " arg-count "-" return-count))
-                  (qwerty/values ~@(repeat return-count nil))))))
+               :let [function-name (symbol (str "invoke" arg-count "_" return-count))
+                     impl-function-name (symbol (str "invoke" (count args) "_" (count return-types)))]]
+           (cond
+            (and (= arg-count (count args))
+                 (= return-count (count return-types)))
+            `(qwerty/defgomethod ~function-name ~struct-pointer ~(cons this-name args)
+               ~(repeatedly return-count #(gensym 'r))
+               (qwerty/do
+                 (qwerty/comment "line" ~(:line (meta form)))
+                 ~(close-over lowered-body (set free-in-body) this-name)))
+            (and (= arg-count (count args))
+                 (< return-count (count return-types)))
+            (let [values (repeatedly (count return-types) #(gensym 'values))]
+              `(qwerty/defgomethod ~function-name ~struct-pointer ~(cons this-name args)
+                 ~(repeatedly return-count #(gensym 'r))
+                 (qwerty/results ~values (qwerty/go-method-call ~this-name ~impl-function-name ~@args)
+                                 (qwerty/do
+                                   ~@(for [v (drop return-count values)]
+                                       `(qwerty/. ~'NOP ~v))
+                                   (qwerty/values ~@(take return-count values))))))
+            :else
+            `(qwerty/defgomethod ~function-name ~struct-pointer ~(cons this-name (repeatedly arg-count #(gensym 'a)))
+               ~(repeatedly return-count #(gensym 'r))
+               (qwerty/do
+                 (qwerty/. ~'panic ~(str "bad arity " arg-count "-" return-count))
+                 (qwerty/values ~@(repeat return-count nil))))))
        (qwerty/defgofun ~constructor ~(seq free-in-body)
          (~(repeat (count free-in-body) 'interface) ~(symbol (str "*" (name struct-name))))
          ~(lower
