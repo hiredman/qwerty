@@ -53,9 +53,12 @@
                                    (qwerty/let* ((n (qwerty/cast string name))
                                                  (m (qwerty/cast "map[string]Var" the_vars)))
                                                 (qwerty/results (value found) (qwerty/map-entry m n)
-                                                                (qwerty/if found
-                                                                           (println value)
-                                                                           (println "not-found"))))))
+                                                                (println
+                                                                 (qwerty/if found
+                                                                            (println value)
+                                                                            (qwerty/if (qwerty/nil? nil)
+                                                                                       (println "it is nil!")
+                                                                                       (println "not-found"))))))))
 
 
 (qwerty/godef cons (qwerty/fn* (x y)

@@ -10,6 +10,7 @@
 ;; alpha conversion
 
 (load-file "./alpha.clj")
+(load-file "./expand.clj")
 
 ;; free variables
 
@@ -92,9 +93,12 @@
   (into (free-variables m)
         (free-variables k)))
 
+(defmethod free-variables-seq 'qwerty/nil? [[_ v]]
+  (free-variables v))
+
 (defmethod free-variables-seq :default [form]
   (when (symbol? (first form))
-    (assert (not= "qwerty" (namespace (first form)))))
+    (assert (not= "qwerty" (namespace (first form))) (pr-str form)))
   (reduce into #{} (map free-variables form)))
 
 ;; close-over
@@ -188,10 +192,27 @@
      ~(close-over then variables this-name)
      ~(close-over else variables this-name)))
 
+(defmethod close-over-seq 'qwerty/test [[_ condition exp] variables this-name]
+  `(qwerty/test ~(close-over condition variables this-name)
+                ~exp))
+
+(defmethod close-over-seq 'qwerty/labels [[_ & exps] variables this-name]
+  `(qwerty/labels ~@(for [e exps]
+                      (if (symbol? e)
+                        e
+                        (close-over e variables this-name)))))
+
+(defmethod close-over-seq 'qwerty/goto [form variables this-name]
+  form)
+
+(defmethod close-over-seq 'qwerty/nil? [[_ v] variables this-name]
+  `(qwerty/nil? ~(close-over v variables this-name)))
+
 
 (defmethod close-over-seq :default [form variables this-name]
   (assert (not (and (symbol? (first form))
-                    (= "qwerty" (namespace (first form))))))
+                    (= "qwerty" (namespace (first form)))))
+          (pr-str form))
   (doall
    (for [p form]
      (close-over p variables this-name))))
@@ -499,6 +520,16 @@
 (defmethod lower-seq 'qwerty/make [exp]
   exp)
 
+(defmethod lower-seq 'qwerty/goto [exp]
+  exp)
+
+(defmethod lower-seq 'qwerty/labels [[_ & body]]
+  `(qwerty/labels
+    ~@(for [e body]
+        (if (symbol? e)
+          e
+          (lower e)))))
+
 (defmethod lower-seq 'qwerty/go-method-call [[_ target method & args]]
   (if (and (not (coll? target))
            (every? (complement coll?) args))
@@ -510,6 +541,36 @@
        `(qwerty/let* (~t ~(lower target)
                          ~@bindings)
                      (qwerty/go-method-call ~t ~method ~@(map first bindings)))))))
+
+(defmethod lower-seq 'qwerty/if [[_ cond then else]]
+  (let [e-l (gensym 'else)
+        end (gensym 'end)
+        phi (gensym 'phi)
+        c (gensym 'condition)]
+    (lower
+     `(qwerty/let* ((~c ~(lower cond)))
+                   (qwerty/do
+                     (qwerty/local ~phi ~'interface)
+                     (qwerty/labels
+                      (qwerty/test ~c ~e-l)
+                      ~(lower
+                        `(qwerty/do
+                           (qwerty/set! ~phi ~(lower then))
+                           (qwerty/goto ~end)))
+                      ~e-l
+                      ~(lower
+                        `(qwerty/do
+                           (qwerty/set! ~phi ~(lower else))
+                           (qwerty/goto ~end)))
+                      ~end)
+                     ~phi)))))
+
+(defmethod lower-seq 'qwerty/test [[_ condition label]]
+  (if (coll? condition)
+    (let [c (gensym 'c)]
+      (lower `(qwerty/let* ((~c ~(lower condition)))
+                           `(qwerty/test ~c ~label))))
+    `(qwerty/test ~condition ~label)))
 
 (defmethod lower-seq :default [form]
   (assert (or (coll? (first form))
@@ -582,11 +643,12 @@
       (println))))
 
 (defmethod go-seq 'qwerty/do [s]
-  (doseq [item (butlast (rest s))]
-    (binding [*context* :statement]
-      (go item)
-      (println)))
-  (go (last s)))
+  (when (> (count s) 1)
+    (doseq [item (butlast (rest s))]
+      (binding [*context* :statement]
+        (go item)
+        (println)))
+    (go (last s))))
 
 (defmethod go-seq 'qwerty/defgofun [[_ fun-name args types & body]]
   (binding [*scope* :function]
@@ -770,6 +832,20 @@
                                                  "nil"
                                                  a))))))
 
+(defmethod go-seq 'qwerty/labels [[_  & e]]
+  (doseq [e e]
+    (if (symbol? e)
+      (println (str "L" e ":"))
+      (do
+        (go e)
+        (println)))))
+
+(defmethod go-seq 'qwerty/test [[_ condition label]]
+  (println "if" (str "!(" condition ".(bool))") "{ goto" (str "L" label) "}"))
+
+(defmethod go-seq 'qwerty/goto [[_ label]]
+  (println "goto" (str "L" label)))
+
 (defmethod go-seq 'qwerty/results [[_  names exp body]]
   (print (apply str (interpose \, names)) ":=")
   (binding [*context* :statement]
@@ -866,38 +942,70 @@
        form))
    form))
 
-;; (defn split-lets [form]
-;;   (w/postwalk
-;;    (fn [form]
-;;      (if (and (seq? form)
-;;               (= (first form) 'qwerty/let*)
-;;               (> (count (second form)) 1))
-;;        (let [[_ [b & bs] body] form]
-;;          `(qwerty/let* (~b)
-;;                        (qwerty/let* ~bs
-;;                                     ~body)))
-;;        form))
-;;    form))
+(declare raise-locals-out-of-labels)
+(defmulti raise-locals (fn [exp env] (type exp)))
+(defmulti raise-locals-seq (fn [exp env] (first exp)))
+(defmethod raise-locals clojure.lang.ISeq [exp env]
+  (raise-locals-seq exp env))
+(defmethod raise-locals clojure.lang.Symbol [exp env] [exp env])
+(defmethod raise-locals java.lang.String [exp env] [exp env])
+(defmethod raise-locals java.lang.Number [exp env] [exp env])
+(defmethod raise-locals nil [exp env] [exp env])
+(defmethod raise-locals-seq 'qwerty/struct [exp env]
+  [exp env])
+(defmethod raise-locals-seq 'qwerty/definterface [exp env]
+  [exp env])
+(defmethod raise-locals-seq 'qwerty/do [exp seen]
+  [exp seen]
+  #_(let [locals ]
+      [`(qwerty/do ~@(distinct locals)
+                   ~@(rest exp))
+       (into seen locals)]))
+(defmethod raise-locals-seq 'qwerty/local [local seen]
+  [(if (contains? seen local)
+     `(qwerty/do)
+     local)
+   seen])
+(defmethod raise-locals-seq 'qwerty/set! [exp env] [exp env])
+(defmethod raise-locals-seq 'qwerty/make [exp env] [exp env])
+(defmethod raise-locals-seq 'qwerty/defgomethod [exp env] [exp env])
+(defmethod raise-locals-seq 'qwerty/. [exp env] [exp env])
+(defmethod raise-locals-seq 'qwerty/values [exp env] [exp env])
+(defmethod raise-locals-seq 'qwerty/comment [exp env] [exp env])
+(defmethod raise-locals-seq 'qwerty/defgofun [exp env] [exp env])
+(defmethod raise-locals-seq 'qwerty/new [exp env] [exp env])
+(defmethod raise-locals-seq 'qwerty/cast [exp env] [exp env])
+(defmethod raise-locals-seq 'qwerty/.- [exp env] [exp env])
+(defmethod raise-locals-seq 'qwerty/results [exp env] [exp env])
+(defmethod raise-locals-seq 'qwerty/labels [[_ & exps] env]
+  (let [x (for [e exps]
+            (if (symbol? e)
+              [#{} e]
+              (let [locals (filter #(and (seq? %)
+                                         (= 'qwerty/local (first %)))
+                                   (tree-seq seq? seq e))]
+                [(set locals) (raise-locals-out-of-labels e (into env locals))])))]
+    (if (not (empty? (mapcat first x)))
+      [`(qwerty/do
+          ~@(doall (distinct (mapcat first x)))
+          (qwerty/labels ~@(doall (map second x))))
+       env]
+      [`(qwerty/labels ~@exps) env])))
+(defmethod raise-locals-seq 'qwerty/go-method-call [exp env] [exp env])
+(defmethod raise-locals-seq 'qwerty/+ [exp env] [exp env])
+(defmethod raise-locals-seq 'qwerty/goderef [exp env] [exp env])
+(defmethod raise-locals-seq 'qwerty/nil? [exp env] [exp env])
+(defmethod raise-locals-seq 'qwerty/test [exp env] [exp env])
+(defmethod raise-locals-seq 'qwerty/goto [exp env] [exp env])
 
-;; (defn raise-lets [form]
-;;   (w/postwalk
-;;    (fn [form]
-;;      (if (and (seq? form)
-;;               (= (first form) 'qwerty/let*)
-;;               (= 1 (count (second form))))
-;;        (let [[_ [[n v]] body] form]
-;;          (if (and (seq? v)
-;;                   (= (first v) 'qwerty/let*))
-;;            (let [[_ [[vn vv]] vbody] v]
-;;              `(qwerty/let* ((~vn ~vv))
-;;                            (qwerty/let* ((~n ~vbody))
-;;                                         ~body)))
-;;            form))
-;;        form))
-;;    form))
+(defn raise-locals-out-of-labels [form seen]
+  (expand form seen raise-locals))
 
 (defn f [form]
-  (let [nf (collapse-do (raise-decls form))]
+  ;; (binding [*out* *err*]
+  ;;   (pprint form)
+  ;;   (println))
+  (let [nf (raise-locals-out-of-labels (collapse-do (raise-decls form)) #{})]
     (if (= nf form)
       form
       (recur nf))))
@@ -910,21 +1018,6 @@
        (println "package " (second form))
        (and (seq? form) (= (first form) 'qwerty/import))
        (println "import " (pr-str (second form)))
-       :else (do
-               ;; (pprint (f (lower form)))
-               ;; (println)
-               (binding [*out* *err*]
-                 ;; (println "IN")
-                 ;; (pprint form)
-                 ;; (println "OUT")
-                 ;; (pprint (f (lower (α-convert form {}))))
-                 ;; (println)
-                 )
-               (go (f (lower (α-convert form {})))))
-       #_(let [{:keys [declarations expression]} (lower form)]
-           (binding [*context* :statement
-                     *scope* :package]
-             (go declarations)
-             (go expression))))
+       :else (go (f (lower (α-convert form {})))))
       (println)
       (recur (read *in* false eof)))))
