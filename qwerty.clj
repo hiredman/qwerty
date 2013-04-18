@@ -7,100 +7,10 @@
 (declare ^:dynamic *context*)
 (declare ^:dynamic *scope*)
 
-;; alpha conversion
-
 (load-file "./expand.clj")
 (load-file "./alpha.clj")
+(load-file "./free.clj")
 
-
-;; free variables
-
-(defmulti free-variables type)
-(defmulti free-variables-seq first)
-
-(defmethod free-variables clojure.lang.Symbol [s]
-  #{s})
-
-(defmethod free-variables java.lang.Number [s]
-  #{})
-
-(defmethod free-variables java.lang.Boolean [s]
-  #{})
-
-(defmethod free-variables java.lang.String [s]
-  #{})
-
-(defmethod free-variables clojure.lang.ISeq [exp]
-  (free-variables-seq exp))
-
-(defmethod free-variables nil [exp]
-  #{})
-
-(defmethod free-variables-seq 'qwerty/. [[_ func & args]]
-  (set (mapcat free-variables args)))
-
-(defmethod free-variables-seq 'qwerty/local [_]
-  #{})
-
-(defmethod free-variables-seq 'qwerty/goderef [[_ v]]
-  #{})
-
-(defmethod free-variables-seq 'qwerty/new [_]
-  #{})
-
-(defmethod free-variables-seq 'qwerty/comment [_]
-  #{})
-
-(defmethod free-variables-seq 'qwerty/do [[_ & body]]
-  (set (mapcat free-variables body)))
-
-(defmethod free-variables-seq 'qwerty/set! [[_ f v]]
-  (free-variables v))
-
-(defmethod free-variables-seq 'qwerty/if [[_ condition then else]]
-  (into (into (free-variables condition)
-              (free-variables then))
-        (free-variables else)))
-
-(defmethod free-variables-seq 'qwerty/.- [_]
-  #{})
-
-(defmethod free-variables-seq 'qwerty/cast [[_ c v]]
-  (free-variables v))
-
-(defmethod free-variables-seq 'qwerty/results [[_ locals exp body]]
-  (into (free-variables exp)
-        (s/difference (free-variables body) (set locals))))
-
-(defmethod free-variables-seq 'qwerty/values [[_ & args]]
-  (set (mapcat free-variables args)))
-
-(defmethod free-variables-seq 'qwerty/let* [[_ bindings body]]
-  (:free (let [b (gensym)]
-           (reduce
-            (fn [{:keys [free bound]} [n value]]
-              (let [free (disj (into free (s/difference (free-variables value) bound)) b)
-                    bound (conj bound n)]
-                {:free free
-                 :bound bound}))
-            {:free #{}
-             :bound #{}} (concat bindings [[b body]])))))
-
-(defmethod free-variables-seq 'qwerty/+ [[_ a b]]
-  (into (free-variables a)
-        (free-variables b)))
-
-(defmethod free-variables-seq 'qwerty/map-entry [[_ m k]]
-  (into (free-variables m)
-        (free-variables k)))
-
-(defmethod free-variables-seq 'qwerty/nil? [[_ v]]
-  (free-variables v))
-
-(defmethod free-variables-seq :default [form]
-  (when (symbol? (first form))
-    (assert (not= "qwerty" (namespace (first form))) (pr-str form)))
-  (reduce into #{} (map free-variables form)))
 
 ;; close-over
 
@@ -202,6 +112,9 @@
                       (if (symbol? e)
                         e
                         (close-over e variables this-name)))))
+
+(defmethod close-over-seq 'qwerty/struct [expr variables this-name]
+  expr)
 
 (defmethod close-over-seq 'qwerty/goto [form variables this-name]
   form)
@@ -316,6 +229,7 @@
         this-name (gensym 'this)
         return-types (repeat (apply max (return-count form)) 'interface)]
     `(qwerty/do
+       (qwerty/comment "free-in-body" ~(pr-str free-in-body))
        (qwerty/struct ~struct-name
                       ~@(doall (for [v free-in-body
                                      i [v 'interface]]
@@ -376,7 +290,8 @@
   (cons 'qwerty/do (doall (map lower body))))
 
 (defmethod lower-seq 'qwerty/let* [[_ bindings & body]]
-  (assert (not-any? (partial = 'qwerty/set!) (first bindings)))
+  (assert (not-any? (partial = 'qwerty/set!) (first bindings))
+          (pr-str `(qwerty/let* ~bindings ~@body)))
   `(qwerty/do
      ~@(doall (for [[n v] bindings]
                 (cond
@@ -548,13 +463,13 @@
   (if (and (not (coll? target))
            (every? (complement coll?) args))
     `(qwerty/go-method-call ~target ~method ~@args)
-    (let [t (gensym 'target)
-          bindings (for [a args]
-                     (list (gensym 'a) (lower  a)))]
+    (let [bindings (for [a (cons target args)]
+                     (if (symbol? a)
+                       (list a a)
+                       (list (gensym 'a) (lower a))))]
       (lower
-       `(qwerty/let* (~t ~(lower target)
-                         ~@bindings)
-                     (qwerty/go-method-call ~t ~method ~@(map first bindings)))))))
+       `(qwerty/let* ~(remove #(= (first %) (second %)) bindings)
+                     (qwerty/go-method-call ~(first (first bindings)) ~method ~@(map first (rest bindings))))))))
 
 (defmethod lower-seq 'qwerty/if [[_ cond then else]]
   (let [e-l (gensym 'else)
@@ -1025,6 +940,10 @@
        (println "package " (second form))
        (and (seq? form) (= (first form) 'qwerty/import))
        (println "import " (pr-str (second form)))
-       :else (go (f (lower (α-convert form {})))))
+       :else (let [m (f (lower (α-convert form {})))]
+               #_(binding [*out* *err*]
+                 (pprint m)
+                 (println))
+               (go m)))
       (println)
       (recur (read *in* false eof)))))

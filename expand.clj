@@ -164,6 +164,30 @@
   (assert (empty? new-children))
   form)
 
+(defmethod children-of-seq 'qwerty/let* [[_ bindings body]]
+  (list body))
+(defmethod make-seq 'qwerty/let* [[_ bindings body] new-children]
+  (assert (= 1 (count new-children)))
+  (assert (every? #(and (seq? %) (= 2 (count %))) bindings))
+  (doall `(qwerty/let* ~bindings ~@new-children)))
+
+(defmethod children-of-seq 'qwerty/if [[_ & parts]]
+  parts)
+(defmethod make-seq 'qwerty/if [[_ & parts] new-children]
+  (assert (> 4 (count new-children)))
+  `(qwerty/if ~@new-children))
+
+(defmethod children-of-seq :default [exp]
+  (assert (not (and (symbol? (first exp))
+                    (= "qwerty" (namespace (first exp)))))
+          (pr-str exp))
+  exp)
+(defmethod make-seq :default [exp new-children]
+  (assert (not (and (symbol? (first exp))
+                    (= "qwerty" (namespace (first exp)))))
+          (pr-str exp))
+  new-children)
+
 (defn expand [form env f]
   (loop [form form
          env env]
