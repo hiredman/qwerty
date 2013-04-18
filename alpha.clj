@@ -106,6 +106,18 @@
 (defmethod α-convert-seq 'qwerty/make [form env]
   form)
 
+(defmethod α-convert-seq 'qwerty/labels [[_ & exps] env]
+  `(qwerty/labels ~@(for [e exps]
+                      (if (symbol? e)
+                        e
+                        (α-convert e env)))))
+
+(defmethod α-convert-seq 'qwerty/test [[_ c l] env]
+  `(qwerty/test ~(α-convert c env) ~l))
+
+(defmethod α-convert-seq 'qwerty/goto [form env]
+  form)
+
 (defmethod α-convert-seq 'qwerty/map-entry [[_ map key] env]
   `(qwerty/map-entry ~(α-convert map env)
                      ~(α-convert key env)))

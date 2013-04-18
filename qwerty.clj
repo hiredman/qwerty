@@ -9,8 +9,9 @@
 
 ;; alpha conversion
 
-(load-file "./alpha.clj")
 (load-file "./expand.clj")
+(load-file "./alpha.clj")
+
 
 ;; free variables
 
@@ -569,7 +570,7 @@
   (if (coll? condition)
     (let [c (gensym 'c)]
       (lower `(qwerty/let* ((~c ~(lower condition)))
-                           `(qwerty/test ~c ~label))))
+                           (qwerty/test ~c ~label))))
     `(qwerty/test ~condition ~label)))
 
 (defmethod lower-seq :default [form]
@@ -956,16 +957,9 @@
 (defmethod raise-locals-seq 'qwerty/definterface [exp env]
   [exp env])
 (defmethod raise-locals-seq 'qwerty/do [exp seen]
-  [exp seen]
-  #_(let [locals ]
-      [`(qwerty/do ~@(distinct locals)
-                   ~@(rest exp))
-       (into seen locals)]))
+  [exp seen])
 (defmethod raise-locals-seq 'qwerty/local [local seen]
-  [(if (contains? seen local)
-     `(qwerty/do)
-     local)
-   seen])
+  [(if (contains? seen local) `(qwerty/do) local) seen])
 (defmethod raise-locals-seq 'qwerty/set! [exp env] [exp env])
 (defmethod raise-locals-seq 'qwerty/make [exp env] [exp env])
 (defmethod raise-locals-seq 'qwerty/defgomethod [exp env] [exp env])

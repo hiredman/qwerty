@@ -120,11 +120,17 @@
 (qwerty/defgofun main ()
                  (())
                  (qwerty/do
+                  (qwerty/let* ((a "foo"))
+                               (qwerty/labels
+                                start (qwerty/test (qwerty/nil? a) foo)
+                                      (qwerty/goto end)
+                                foo   (qwerty/do
+                                       (println "here")
+                                       (qwerty/set! a nil)
+                                       (qwerty/goto start))
+                                end))
                   (make_var "foo" 1)
-                  (qwerty/. test1)
-                  #_(qwerty/if true
-                               (println "TRUE")
-                               (println "FALSE"))))
+                  (qwerty/. test1)))
 
 
 ;; (make-channel x)

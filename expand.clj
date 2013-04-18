@@ -168,7 +168,7 @@
   (loop [form form
          env env]
     (let [[new-form new-env] (f form env)]
-      (if true #_(= new-form form)
+      (if (= new-form form)
         (make new-form (for [child (children-of new-form)]
                          (expand child new-env f)))
         (recur new-form new-env)))))
