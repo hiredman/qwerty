@@ -91,6 +91,7 @@
                                                 (println a)
                                                 (println b)
                                                 (println c))))
+                  ((qwerty/fn* () (println "foo")))
                   (println "x")
                   ;; (println (iadd (stdin-int)
                   ;;                (stdin-int)))
@@ -108,30 +109,7 @@
                                (println "FALSE"))))
 
 
-;; (qwerty/godef foo
-;;               (qwerty/cast IFn
-;;                            (qwerty/fn* (x)
-;;                                        (qwerty/do
-;;                                         (qwerty/. fmt.Println x)
-;;                                         nil))))
-
-;; (qwerty/defgofun main ()
-;;                  (())
-;;                  (foo "hello world"))
-
-
-;; (qwerty/defgofun main ()
-;;                  (())
-;;                  ((qwerty/fn* ()
-;;                               (qwerty/do
-;;                                (qwerty/. fmt.Println "Hello World")
-;;                                nil))))
-
-;; (qwerty/defgofun main ()
-;;                  (())
-;;                  (qwerty/let* ((v (qwerty/new Var)))
-;;                               (qwerty/. fmt.Println (qwerty/go-method-call v invoke0_1))))
-
+;; (make-channel x)
 
 ;; (qwerty/select
 ;;  (qwerty/go<- ((i3,ok) ch)

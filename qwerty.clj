@@ -203,6 +203,11 @@
   (into (free-variables a)
         (free-variables b)))
 
+(defmethod free-variables-seq :default [form]
+  (when (symbol? (first form))
+    (assert (not= "qwerty" (namespace (first form)))))
+  (reduce into #{} (map free-variables form)))
+
 ;; close-over
 
 (defmulti close-over (fn [exp variables this-name] (type exp)))
@@ -260,8 +265,18 @@
 (defmethod close-over-seq 'qwerty/local [expr variables this-name]
   expr)
 
+
 (defmethod close-over-seq 'qwerty/goderef [expr variables this-name]
   expr)
+
+(defmethod close-over-seq 'qwerty/type-convert [[_ t v] variables this-name]
+  `(qwerty/type-convert ~t ~(close-over v variables this-name)))
+
+(defmethod close-over-seq 'qwerty/go-method-call [[_ target method-name & args] variables this-name]
+  `(qwerty/go-method-call ~(close-over target variables this-name)
+                          ~method-name
+                          ~@(for [arg args]
+                              (close-over arg variables this-name))))
 
 
 (defmethod close-over-seq 'qwerty/values [[_ & args] variables this-name]
@@ -474,7 +489,7 @@
            (not= 'qwerty/commment (first exp)))))
 
 (defmethod lower-seq 'qwerty/cast [[_ type v]]
-  (if (atomic? v)
+  (if-not (coll? v)
     `(qwerty/cast ~type ~v)
     (let [c (gensym 'c)]
       (lower `(qwerty/let* ((~c ~v))
@@ -541,7 +556,7 @@
    (every? (complement coll?) application)
    (let [f (gensym 'f)]
      (lower
-      `(qwerty/let* ((~f (qwerty/type-convert ~'IFn (qwerty/cast ~'IFn ~(first application)))))
+      `(qwerty/let* ((~f (qwerty/cast ~'IFn ~(first application))))
                     (qwerty/results
                      ~values
                      (qwerty/go-method-call ~f ~(symbol (str "invoke" (count (rest application)) "_"
@@ -596,7 +611,7 @@
                              (qwerty/comment "line" ~(:line (meta form)))
                              ~(lower (map first bindings))))))
     (let [f (gensym 'f)]
-      (lower `(qwerty/let* ((~f (qwerty/type-convert ~'IFn ~(first form))))
+      (lower `(qwerty/let* ((~f (qwerty/cast ~'IFn ~(first form))))
                            (qwerty/do
                              (qwerty/comment "line" ~(:line (meta form)))
                              (qwerty/go-method-call ~f ~(symbol (str "invoke" (count (rest form)) "_1"))
@@ -833,6 +848,7 @@
       (print "var ")
       (binding [*context* :statement]
         (go thing))
+      (print " interface{} ")
       (print " = ")
       (binding [*context* :statement]
         (go value))
@@ -1021,8 +1037,9 @@
                  ;; (println "IN")
                  ;; (pprint form)
                  ;; (println "OUT")
-                 (pprint (f (lower (α-convert form {}))))
-                 (println))
+                 ;; (pprint (f (lower (α-convert form {}))))
+                 ;; (println)
+                 )
                (go (f (lower (α-convert form {})))))
        #_(let [{:keys [declarations expression]} (lower form)]
            (binding [*context* :statement
