@@ -169,6 +169,11 @@
          env env]
     (let [[new-form new-env] (f form env)]
       (if (= new-form form)
-        (make new-form (for [child (children-of new-form)]
-                         (expand child new-env f)))
+        (let [[new-env new-children] (reduce
+                                      (fn [[env children] form]
+                                        (let [[new-form new-env] (expand form env f)]
+                                          [new-env (conj children new-form)]))
+                                      [new-env []]
+                                      (children-of new-form))]
+          [(make new-form new-children) new-env])
         (recur new-form new-env)))))

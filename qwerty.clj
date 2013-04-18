@@ -1006,7 +1006,7 @@
 (defmethod raise-locals-seq 'qwerty/goto [exp env] [exp env])
 
 (defn raise-locals-out-of-labels [form seen]
-  (expand form seen raise-locals))
+  (first (expand form seen raise-locals)))
 
 (defn f [form]
   ;; (binding [*out* *err*]
