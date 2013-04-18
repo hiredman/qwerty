@@ -369,7 +369,7 @@
   (lower-seq s))
 
 
-(def max-arity 2)
+(def max-arity 4)
 (def max-returns 4)
 
 (defmethod lower-seq 'qwerty/fn* [form]

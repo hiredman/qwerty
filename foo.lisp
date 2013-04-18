@@ -27,6 +27,17 @@
                      (invoke2_2 (a1 a2) (result1 result2))
                      (invoke2_3 (a1 a2) (result1 result2 result3))
                      (invoke2_4 (a1 a2) (result1 result2 result3 result4))
+
+                     (invoke3_1 (a1 a2 a3) (result1))
+                     (invoke3_2 (a1 a2 a3) (result1 result2))
+                     (invoke3_3 (a1 a2 a3) (result1 result2 result3))
+                     (invoke3_4 (a1 a2 a3) (result1 result2 result3 result4))
+
+                     (invoke4_1 (a1 a2 a3 a4) (result1))
+                     (invoke4_2 (a1 a2 a3 a4) (result1 result2))
+                     (invoke4_3 (a1 a2 a3 a4) (result1 result2 result3))
+                     (invoke4_4 (a1 a2 a3 a4) (result1 result2 result3 result4))
+
                      )
 
 (qwerty/godef make-var (qwerty/fn* (name value)
