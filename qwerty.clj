@@ -88,6 +88,10 @@
   (into (free-variables a)
         (free-variables b)))
 
+(defmethod free-variables-seq 'qwerty/map-entry [[_ m k]]
+  (into (free-variables m)
+        (free-variables k)))
+
 (defmethod free-variables-seq :default [form]
   (when (symbol? (first form))
     (assert (not= "qwerty" (namespace (first form)))))
@@ -170,10 +174,27 @@
 (defmethod close-over-seq 'qwerty/cast [[_ t v] variables this-name]
   `(qwerty/cast ~t ~(close-over v variables this-name)))
 
+(defmethod close-over-seq 'qwerty/map-entry [[_ m k] variables this-name]
+  `(qwerty/map-entry ~(close-over m variables this-name)
+                     ~(close-over k variables this-name)))
+
+(defmethod close-over-seq 'qwerty/results [[_ values app body] variables this-name]
+  `(qwerty/results ~values
+                   ~(close-over app variables this-name)
+                   ~(close-over body variables this-name)))
+
 (defmethod close-over-seq 'qwerty/if [[_ cond then else] variables this-name]
   `(qwerty/if ~(close-over cond variables this-name)
      ~(close-over then variables this-name)
      ~(close-over else variables this-name)))
+
+
+(defmethod close-over-seq :default [form variables this-name]
+  (assert (not (and (symbol? (first form))
+                    (= "qwerty" (namespace (first form))))))
+  (doall
+   (for [p form]
+     (close-over p variables this-name))))
 
 ;; return-count
 
@@ -210,10 +231,17 @@
 (defmethod return-count-seq 'qwerty/+ [_]
   [1])
 
+(defmethod return-count-seq 'qwerty/map-entry [_]
+  [1])
+
+(defmethod return-count-seq 'qwerty/results [[_ exp app body]]
+  (return-count body))
+
 (defmethod return-count-seq :default [x]
   (assert (and (seq? x)
                (not (and (symbol? (first x))
-                         (= "qwerty" (namespace (first x)))))))
+                         (= "qwerty" (namespace (first x))))))
+          (pr-str x))
   (mapcat return-count x))
 
 (defmethod return-count-seq 'qwerty/if [[_ cond then else]]
@@ -412,7 +440,7 @@
     `(qwerty/+ ~a ~b)))
 
 (defmethod lower-seq 'qwerty/godef [[_ n v]]
-  (if (not (atomic? v))
+  (if (coll? v)
     (let [a_ (gensym 'v)]
       (lower
        `(qwerty/let* ((~a_ ~(lower v)))
@@ -426,6 +454,16 @@
    `(qwerty/results ~values ~application ~body)
    (= (first application) 'qwerty/.-)
    `(qwerty/results ~values ~application ~body)
+   (= (first application) 'qwerty/map-entry)
+   (let [[_ m k] application]
+     (if (and (not (coll? m))
+              (not (coll? k)))
+       `(qwerty/results ~values ~application ~(lower body))
+       (let [ke (gensym 'k)
+             ma (gensym 'm)]
+         (lower `(qwerty/let* ((~ma ~(lower m))
+                               (~ke ~(lower k)))
+                              (qwerty/results ~values (qwerty/map-entry ~ma ~ke) ~(lower body)))))))
    (every? (complement coll?) application)
    (let [f (gensym 'f)]
      (lower
@@ -456,6 +494,9 @@
   exp)
 
 (defmethod lower-seq 'qwerty/definterface [exp]
+  exp)
+
+(defmethod lower-seq 'qwerty/make [exp]
   exp)
 
 (defmethod lower-seq 'qwerty/go-method-call [[_ target method & args]]
@@ -635,48 +676,6 @@
   (if (= :return *context*)
     (println)))
 
-;; (defmethod go-seq 'qwerty/let*  [[_ [[n v]] body]]
-;;   (cond
-;;    (and (seq? v)
-;;         (= 'qwerty/let* (first v)))
-;;    (do
-;;      (binding [*context* :statement]
-;;        (go v))
-;;      (println)
-;;      (recur `(qwerty/let* ((~n ~(last v))) ~body)))
-;;    (and (seq? v)
-;;         (= 'qwerty/if (first v)))
-;;    (let [[_ cond then else] v
-;;          label (gensym 'L)
-;;          end (gensym 'L)]
-;;      (println "if (!" cond ") { goto" label "}")
-;;      (go then)
-;;      (println)
-;;      (println (str label ":"))
-;;      (go else)
-;;      (println)
-;;      (println "goto" label)
-;;      (println (str end ":"))
-;;      (go body))
-;;    (nil? v)
-;;    (do
-;;      (println "var" n "interface{}" "=" "nil")
-;;      (go body))
-;;    (= *scope* :function)
-;;    (do
-;;      (print " " n ":=")
-;;      (binding [*context* :statement]
-;;        (go v))
-;;      (println)
-;;      (go body))
-;;    :else
-;;    (do
-;;      (print "var " (munge n) "=")
-;;      (binding [*context* :statement]
-;;        (go v))
-;;      (println)
-;;      (go body))))
-
 (defmethod go-seq 'qwerty/. [[_ func & args]]
   (if (= :return *context*)
     (print "return"))
@@ -686,6 +685,20 @@
       (go v)
       (print ",")))
   (print ")")
+  (if (= :return *context*)
+    (println)))
+
+(defmethod go-seq 'qwerty/make [[_ type-name]]
+  (if (= :return *context*)
+    (print "return"))
+  (print "make(" type-name ")")
+  (if (= :return *context*)
+    (println)))
+
+(defmethod go-seq 'qwerty/map-entry [[_ m k]]
+  (if (= :return *context*)
+    (print "return"))
+  (print "" (str m  "[" k "]"))
   (if (= :return *context*)
     (println)))
 
@@ -759,7 +772,8 @@
 
 (defmethod go-seq 'qwerty/results [[_  names exp body]]
   (print (apply str (interpose \, names)) ":=")
-  (go exp)
+  (binding [*context* :statement]
+    (go exp))
   (println)
   (go body))
 

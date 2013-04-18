@@ -103,6 +103,13 @@
 (defmethod α-convert-seq 'qwerty/definterface [form env]
   form)
 
+(defmethod α-convert-seq 'qwerty/make [form env]
+  form)
+
+(defmethod α-convert-seq 'qwerty/map-entry [[_ map key] env]
+  `(qwerty/map-entry ~(α-convert map env)
+                     ~(α-convert key env)))
+
 (defmethod α-convert-seq 'qwerty/go-method-call [[_ target method-name & args] env]
   `(qwerty/go-method-call ~(α-convert target env) ~method-name
                           ~@(for [a args]

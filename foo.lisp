@@ -40,20 +40,23 @@
 
                      )
 
-(qwerty/godef make-var (qwerty/fn* (name value)
-                                   (qwerty/let* ((v (qwerty/new Var))
-                                                 (n (qwerty/cast string name)))
-                                                (qwerty/do
-                                                 (qwerty/set! (qwerty/.- v name) n)
-                                                 (qwerty/set! (qwerty/.- v value) value)
-                                                 (qwerty/set! (qwerty/.- v macro) false)
-                                                 v))))
+
+(qwerty/godef the_vars (qwerty/make "map[string]Var"))
 
 (qwerty/godef println
               (qwerty/fn* (x)
                           (qwerty/do
                            (qwerty/. fmt.Println x)
                            nil)))
+
+(qwerty/godef make_var (qwerty/fn* (name value)
+                                   (qwerty/let* ((n (qwerty/cast string name))
+                                                 (m (qwerty/cast "map[string]Var" the_vars)))
+                                                (qwerty/results (value found) (qwerty/map-entry m n)
+                                                                (qwerty/if found
+                                                                           (println value)
+                                                                           (println "not-found"))))))
+
 
 (qwerty/godef cons (qwerty/fn* (x y)
                                (qwerty/let* ((c (qwerty/new Cons)))
@@ -114,6 +117,7 @@
 (qwerty/defgofun main ()
                  (())
                  (qwerty/do
+                  (make_var "foo" 1)
                   (qwerty/. test1)
                   #_(qwerty/if true
                                (println "TRUE")
