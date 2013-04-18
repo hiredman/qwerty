@@ -12,7 +12,7 @@
                macro bool)
 
 (qwerty/definterface IFn
-                     
+
                      (invoke0_1 () (result1))
                      (invoke0_2 () (result1 result2))
                      (invoke0_3 () (result1 result2 result3))
@@ -28,9 +28,6 @@
                      (invoke2_3 (a1 a2) (result1 result2 result3))
                      (invoke2_4 (a1 a2) (result1 result2 result3 result4))
                      )
-
-;; (qwerty/defgomethod invoke0_1 Var (bar) (foo)
-;;                   "foo")
 
 (qwerty/godef make-var (qwerty/fn* (name value)
                                    (qwerty/let* ((v (qwerty/new Var))
@@ -88,7 +85,7 @@
 (qwerty/defgofun test1 ()
                  (())
                  (qwerty/do
-                  #_(qwerty/let* ((one "one"))
+                  (qwerty/let* ((one "one"))
                                (qwerty/results (a b c) ((qwerty/fn* () (qwerty/values one "two" "three")))
                                                (qwerty/do
                                                 (println a)

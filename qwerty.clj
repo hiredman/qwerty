@@ -510,7 +510,6 @@
      (= 'qwerty/do (first lv))
      `(qwerty/do ~@(rest (butlast lv))
                  ~(lower `(qwerty/set! ~f ~(lower (last lv)))))
-
      :else
      (assert false (pr-str lv)))))
 
@@ -533,29 +532,34 @@
     `(qwerty/set! ~n ~v)))
 
 ;;complicated
-(defmethod lower-seq 'qwerty/results [[_ values [op & args] body]]
-  (if (or (= op 'qwerty/.)
-          (= op 'qwerty/go-method-call))
-    (if (every? (complement coll?) args)
-      `(qwerty/results ~values (qwerty/. ~@args)
-                       ~(lower body))
-      (let [m (first args)
-            args (for [a (rest args)]
-                   (list (gensym 'a) (lower a)))]
-        (lower `(qwerty/let* ~args
-                             (qwerty/results ~values (~op ~m ~@(doall (map first args)))
-                                             ~(lower body))))))
-    (let [op-n (gensym 'op)
-          args (for [a args]
-                 (list (gensym 'a) (lower a)))
-          v (gensym 'v)
-          f (gensym 'f)]
-      (lower
-       `(qwerty/let* ((~op-n ~(lower op))
-                      ~@args
-                      (~f (qwerty/.- ~op-n ~'_fun)))
-                     (qwerty/results ~values (qwerty/. ~f ~op-n ~@(doall (map first args)))
-                                     ~(lower body)))))))
+(defmethod lower-seq 'qwerty/results [[_ values application body]]
+  (cond
+   (= (first application) 'qwerty/go-method-call)
+   `(qwerty/results ~values ~application ~body)
+   (= (first application) 'qwerty/.-)
+   `(qwerty/results ~values ~application ~body)
+   (every? (complement coll?) application)
+   (let [f (gensym 'f)]
+     (lower
+      `(qwerty/let* ((~f (qwerty/type-convert ~'IFn (qwerty/cast ~'IFn ~(first application)))))
+                    (qwerty/results
+                     ~values
+                     (qwerty/go-method-call ~f ~(symbol (str "invoke" (count (rest application)) "_"
+                                                             (count values)))
+                                            ~@(rest application))
+                     ~(lower body)))))
+   :else
+   (do
+     (assert (or (not (symbol? (first application)))
+                 (not= "qwerty" (namespace (first application)))))
+     (let [bindings (for [e application]
+                      (if (symbol? e)
+                        (list e e)
+                        (list (gensym 'r) (lower e))))]
+       (lower
+        `(qwerty/let* ~(remove #(= (first %) (second %)) bindings)
+                      (qwerty/results ~values ~(map first bindings)
+                                      ~(lower body))))))))
 
 ;; (defmethod lower-seq 'qwerty/do [[_ & body]]
 ;;   `(qwerty/do ~@(map lower body)))
@@ -596,7 +600,7 @@
                            (qwerty/do
                              (qwerty/comment "line" ~(:line (meta form)))
                              (qwerty/go-method-call ~f ~(symbol (str "invoke" (count (rest form)) "_1"))
-                                                     ~@(rest form))))))))
+                                                    ~@(rest form))))))))
 
 (defmulti go type)
 
