@@ -138,6 +138,16 @@
                                        (qwerty/set! a nil)
                                        (qwerty/goto start))
                                 end))
+                  (qwerty/let* ((ch (qwerty/make "chan interface{}")))
+                               (qwerty/do
+                                #_(qwerty/go (qwerty/fn* (world)
+                                                       (qwerty/go<- (m ch)
+                                                                    (qwerty/do
+                                                                     (println m)
+                                                                     (println world))))
+                                           "World")
+                                (qwerty/go-> ("Hello" ch)
+                                             (println "sent"))))
                   (make_var "foo" 1)
                   (qwerty/. test1)))
 

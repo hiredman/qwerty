@@ -501,6 +501,31 @@
                            (qwerty/test ~c ~label))))
     `(qwerty/test ~condition ~label)))
 
+(defmethod lower-seq 'qwerty/go-> [[_ [value channel] body]]
+  (cond
+   (and (not (coll? value))
+        (not (coll? channel)))
+   `(qwerty/go-> (~value ~channel) ~(lower body))
+   :else
+   (assert false)))
+
+(defmethod lower-seq 'qwerty/go<- [[_ [result channel] body]]
+  (cond
+   (and (symbol? result)
+        (symbol? channel))
+   `(qwerty/go<- (~result ~channel)
+                 ~(if (not (and (seq? body)
+                                (= 'qwerty/do (first body))
+                                (seq? (second body))
+                                (= 'qwerty/local (first (second body)))
+                                (= result (second (second body)))))
+                    `(qwerty/do
+                       (qwerty/local ~result ~'interface)
+                       ~(lower body))
+                    ~(lower body)))
+   :else
+   (assert false)))
+
 (defmethod lower-seq :default [form]
   (assert (or (coll? (first form))
               (not= "qwerty" (namespace (first form)))) (with-out-str (pprint form)))
@@ -520,6 +545,8 @@
                              (qwerty/comment "line" ~(:line (meta form)))
                              (qwerty/go-method-call ~f ~(symbol (str "invoke" (count (rest form)) "_1"))
                                                     ~@(rest form))))))))
+
+(def info (atom {}))
 
 (defmulti go type)
 
@@ -572,6 +599,7 @@
       (println))))
 
 (defmethod go-seq 'qwerty/do [s]
+  (println "/* qwerty/do */")
   (when (> (count s) 1)
     (doseq [item (butlast (rest s))]
       (binding [*context* :statement]
@@ -754,6 +782,33 @@
   (if (= :return *context*)
     (println)))
 
+(defmethod go-seq 'qwerty/go-> [[_ [value channel] body]]
+  (let [channel-type (get @info channel)]
+    (print (str channel ".(" (if (= channel-type "interface{}") "chan interface{}" channel-type) ")") "<- "))
+  (binding [*context* :statement]
+    (go value))
+  (println)
+  (go body))
+
+(defmethod go-seq 'qwerty/go<- [[_ [result channel] body]]
+  (assert (not (coll? result)))
+  (if (and (seq? body)
+           (= 'qwerty/do (first body))
+           (seq? (second body))
+           (= 'qwerty/local (first (second body)))
+           (= result (second (second body))))
+    (let [local (second body)
+          body (cons 'qwerty/do (rest (rest body)))]
+      (go local)
+      (println result "= <-"(str channel ".(chan interface{})"))
+      (println)
+      (go body))
+    (do
+      (println result "= <-"(str channel ".(chan interface{})"))
+      (println)
+      (go body))))
+
+
 (defmethod go-seq 'qwerty/values [[_  & args]]
   (assert (= *context* :return))
   (println "return" (apply str (interpose \, (for [a args]
@@ -793,6 +848,9 @@
   (println "/*" (apply print-str args) "*/"))
 
 (defmethod go-seq 'qwerty/local [[_ n type]]
+  (swap! info assoc n (if (= 'interface type)
+                        "interface{}"
+                        type))
   (when (= *scope* :function)
     (println "var" n (if (= 'interface type)
                        "interface{}"
@@ -919,6 +977,8 @@
 (defmethod raise-locals-seq 'qwerty/nil? [exp env] [exp env])
 (defmethod raise-locals-seq 'qwerty/test [exp env] [exp env])
 (defmethod raise-locals-seq 'qwerty/goto [exp env] [exp env])
+(defmethod raise-locals-seq 'qwerty/go-> [exp env] [exp env])
+(defmethod raise-locals-seq 'qwerty/go<- [exp env] [exp env])
 
 (defn raise-locals-out-of-labels [form seen]
   (first (expand form seen raise-locals)))
@@ -942,8 +1002,8 @@
        (println "import " (pr-str (second form)))
        :else (let [m (f (lower (α-convert form {})))]
                #_(binding [*out* *err*]
-                 (pprint m)
-                 (println))
+                   (pprint m)
+                   (println))
                (go m)))
       (println)
       (recur (read *in* false eof)))))

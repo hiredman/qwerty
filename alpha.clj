@@ -127,6 +127,28 @@
                           ~@(for [a args]
                               (α-convert a env))))
 
+(defmethod α-convert-seq 'qwerty/go-> [[_ [value channel] body] env]
+  `(qwerty/go-> (~(α-convert value env)
+                 ~(α-convert channel env))
+                ~(α-convert body env)))
+
+(defmethod α-convert-seq 'qwerty/go<- [[_ [result channel] body] env]
+  (if (coll? result)
+    (let [[n ok] result
+          nn (gensym 'n)
+          ook (gensym 'ok)]
+      (assert (symbol? n))
+      (assert (symbol? ok))
+      `(qwerty/go<- ((~nn ~ook) ~(α-convert channel env))
+                    ~(α-convert body (assoc env
+                                       n nn
+                                       ok ook))))
+    (let [nn (gensym 'n)]
+      (assert (symbol? result))
+      `(qwerty/go<- (~nn ~(α-convert channel env))
+                    ~(α-convert body (assoc env
+                                       result nn))))))
+
 
 (defmethod α-convert-seq :default [exp env]
   (assert (not (and (symbol? (first exp))

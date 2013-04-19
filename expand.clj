@@ -177,6 +177,20 @@
   (assert (> 4 (count new-children)))
   `(qwerty/if ~@new-children))
 
+
+(defmethod children-of-seq 'qwerty/go-> [[_ [value channel] body]]
+  (list value channel body))
+(defmethod make-seq 'qwerty/go-> [[_ [value channel] body] new-children]
+  (assert (= 3 (count new-children)))
+  `(qwerty/go-> (~(first new-children) ~(second new-children)) ~@(rest (rest new-children))))
+
+(defmethod children-of-seq 'qwerty/go<- [[_ [binding channel] body]]
+  (list channel body))
+(defmethod make-seq 'qwerty/go<- [[_ [binding channel] body] new-children]
+  (assert (= 2 (count new-children)))
+  `(qwerty/go<- (~binding ~(first new-children)) ~@(rest new-children)))
+
+
 (defmethod children-of-seq :default [exp]
   (assert (not (and (symbol? (first exp))
                     (= "qwerty" (namespace (first exp)))))
