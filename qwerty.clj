@@ -122,6 +122,10 @@
 (defmethod close-over-seq 'qwerty/nil? [[_ v] variables this-name]
   `(qwerty/nil? ~(close-over v variables this-name)))
 
+(defmethod close-over-seq 'qwerty/go<- [[_ [result channel] body] variables this-name]
+  `(qwerty/go<- (~result ~(close-over channel variables this-name))
+                ~(close-over body variables this-name)))
+
 
 (defmethod close-over-seq :default [form variables this-name]
   (assert (not (and (symbol? (first form))
@@ -170,6 +174,9 @@
   [1])
 
 (defmethod return-count-seq 'qwerty/results [[_ exp app body]]
+  (return-count body))
+
+(defmethod return-count-seq 'qwerty/go<- [[_ _ body]]
   (return-count body))
 
 (defmethod return-count-seq :default [x]
@@ -522,9 +529,31 @@
                     `(qwerty/do
                        (qwerty/local ~result ~'interface)
                        ~(lower body))
-                    ~(lower body)))
+                    (lower body)))
+   (symbol? result)
+   (let [c (gensym 'channel)]
+     (lower
+      `(qwerty/let* ((~c ~channel))
+                    (qwerty/go<- (~result ~c)
+                                 ~(if (not (and (seq? body)
+                                                (= 'qwerty/do (first body))
+                                                (seq? (second body))
+                                                (= 'qwerty/local (first (second body)))
+                                                (= result (second (second body)))))
+                                    `(qwerty/do
+                                       (qwerty/local ~result ~'interface)
+                                       ~(lower body))
+                                    (lower body))))))
    :else
    (assert false)))
+
+(defmethod lower-seq 'qwerty/go [[_ fun]]
+  (if (symbol? fun)
+    `(qwerty/go ~fun)
+    (let [go (gensym 'go)]
+      (lower
+       `(qwerty/let* ((~go ~(lower fun)))
+                     (qwerty/go ~go))))))
 
 (defmethod lower-seq :default [form]
   (assert (or (coll? (first form))
@@ -824,6 +853,9 @@
         (go e)
         (println)))))
 
+(defmethod go-seq 'qwerty/go [[_  fun]]
+  (println "go" (str "(" fun ".(IFn)).invoke0_1()")))
+
 (defmethod go-seq 'qwerty/test [[_ condition label]]
   (println "if" (str "!(" condition ".(bool))") "{ goto" (str "L" label) "}"))
 
@@ -979,6 +1011,7 @@
 (defmethod raise-locals-seq 'qwerty/goto [exp env] [exp env])
 (defmethod raise-locals-seq 'qwerty/go-> [exp env] [exp env])
 (defmethod raise-locals-seq 'qwerty/go<- [exp env] [exp env])
+(defmethod raise-locals-seq 'qwerty/go [exp env] [exp env])
 
 (defn raise-locals-out-of-labels [form seen]
   (first (expand form seen raise-locals)))

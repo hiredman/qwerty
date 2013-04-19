@@ -140,12 +140,10 @@
                                 end))
                   (qwerty/let* ((ch (qwerty/make "chan interface{}")))
                                (qwerty/do
-                                #_(qwerty/go (qwerty/fn* (world)
+                                (qwerty/go (qwerty/fn* ()
                                                        (qwerty/go<- (m ch)
                                                                     (qwerty/do
-                                                                     (println m)
-                                                                     (println world))))
-                                           "World")
+                                                                     (println m)))))
                                 (qwerty/go-> ("Hello" ch)
                                              (println "sent"))))
                   (make_var "foo" 1)

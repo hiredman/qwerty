@@ -190,6 +190,12 @@
   (assert (= 2 (count new-children)))
   `(qwerty/go<- (~binding ~(first new-children)) ~@(rest new-children)))
 
+(defmethod children-of-seq 'qwerty/go [[_ fun]]
+  (list fun))
+(defmethod make-seq 'qwerty/go [[_ fun] new-children]
+  (assert (= 1 (count new-children)))
+  `(qwerty/go ~@new-children))
+
 
 (defmethod children-of-seq :default [exp]
   (assert (not (and (symbol? (first exp))

@@ -35,6 +35,9 @@
 (defmethod free-seq 'qwerty/+ [exp env] [exp env])
 (defmethod free-seq 'qwerty/values [exp env] [exp env])
 (defmethod free java.lang.Number [exp env] [exp env])
+(defmethod free-seq 'qwerty/go [exp env] [exp env])
+(defmethod free-seq 'qwerty/go<- [[_ [result channel] body :as exp] env]
+  [exp (update-in env [:bound] conj result)])
 
 (defn free-variables [exp]
   (:free (second (expand exp {:free #{}

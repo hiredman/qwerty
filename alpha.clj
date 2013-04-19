@@ -122,6 +122,9 @@
   `(qwerty/map-entry ~(α-convert map env)
                      ~(α-convert key env)))
 
+(defmethod α-convert-seq 'qwerty/go [[_ fun] env]
+  `(qwerty/go ~(α-convert fun env)))
+
 (defmethod α-convert-seq 'qwerty/go-method-call [[_ target method-name & args] env]
   `(qwerty/go-method-call ~(α-convert target env) ~method-name
                           ~@(for [a args]
