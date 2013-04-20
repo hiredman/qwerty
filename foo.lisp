@@ -5,10 +5,6 @@
 (qwerty/import "bufio")
 (qwerty/import "qwerty/lisp")
 
-(qwerty/struct Cons
-               car interface
-               cdr interface)
-
 (qwerty/struct Var
                name string
                value interface
@@ -44,20 +40,6 @@
                                                                      (println "not-found"))))))))
 
 
-(qwerty/godef cons (qwerty/fn* (x y)
-                               (qwerty/let* ((c (qwerty/new Cons)))
-                                            (qwerty/do
-                                              (qwerty/set! (qwerty/.- c car) x)
-                                              (qwerty/set! (qwerty/.- c cdr) y)
-                                              c))))
-
-(qwerty/godef car (qwerty/fn* (c)
-                              (qwerty/let* ((foo (qwerty/cast *Cons c)))
-                                           (qwerty/.- foo car))))
-
-(qwerty/godef cdr (qwerty/fn* (c)
-                              (qwerty/let* ((foo (qwerty/cast *Cons c)))
-                                           (qwerty/.- foo cdr))))
 
 (qwerty/godef iadd (qwerty/fn* (x y)
                                (qwerty/let* ((a (qwerty/cast int x))
@@ -104,7 +86,7 @@
     ;;                (stdin-int)))
     (println (qwerty/nil? nil))
     (println (iadd 1 2))
-    (println (cdr (cons "x" "y")))
+    (println (qwerty.Cdr (qwerty.Cons "x" "y")))
     (println "Hello World")))
 
 (qwerty/defgofun test2 ()
