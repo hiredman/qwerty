@@ -51,6 +51,7 @@
                  ((interface) interface)
                  nil)
 
+(qwerty/godef identity (qwerty/fn* (x) x))
 
 (qwerty/godef the_vars (qwerty/make "map[string]Var"))
 
@@ -207,16 +208,18 @@
                  (qwerty/do
                   (qwerty/. test2)
                   (qwerty/. test1)
-                  ((qwerty/fn* (x) ((qwerty/fn* (y) (println y)) x)) "Hello World")
-                  #_(qwerty/let* ((read (qwerty/fn* (read read_list)
+                  #_((qwerty/fn* (x) ((qwerty/fn* (y) (println y)) x)) "Hello World")
+                  (qwerty/let* ((read (qwerty/fn* (read read_list)
                                                   (qwerty/let* ((read (qwerty/fn* () (read read read_list)))
                                                                 (read_list (qwerty/fn* () (read_list read read_list))))
                                                                (qwerty/fn* (rdr)
                                                                            (qwerty/let* ((read (read))
                                                                                          (read_list (read_list)))
-                                                                                        (qwerty/if (qwerty/nil? rdr)
-                                                                                                   nil
-                                                                                                   (read_list rdr)))))))
+                                                                                        (qwerty/do
+                                                                                         (identity read)
+                                                                                         (qwerty/if (qwerty/nil? rdr)
+                                                                                                    "Hello World"
+                                                                                                    (read_list rdr))))))))
                                 (read_list (qwerty/fn* (read read_list)
                                                        (qwerty/let* ((read (qwerty/fn* () (read read read_list)))
                                                                      (read_list (qwerty/fn* () (read_list read read_list))))
@@ -224,7 +227,7 @@
                                                                                 (qwerty/let* ((read (read))
                                                                                               (read_list (read_list)))
                                                                                              (qwerty/do
-                                                                                              (println "read_list")
+                                                                                              (identity read_list)
                                                                                               (read nil))))))))
                                (qwerty/let* ((read (qwerty/fn* () (read read read_list)))
                                              (read_list (qwerty/fn* () (read_list read read_list)))
