@@ -3,6 +3,7 @@
 (qwerty/import "os")
 (qwerty/import "io")
 (qwerty/import "bufio")
+(qwerty/import "qwerty/lisp")
 
 (qwerty/struct Cons
                car interface
@@ -12,35 +13,6 @@
                name string
                value interface
                macro bool)
-
-(qwerty/definterface IFn
-
-  (invoke0_1 () (result1))
-  (invoke0_2 () (result1 result2))
-  (invoke0_3 () (result1 result2 result3))
-  (invoke0_4 () (result1 result2 result3 result4))
-
-  (invoke1_1 (a1) (result1))
-  (invoke1_2 (a1) (result1 result2))
-  (invoke1_3 (a1) (result1 result2 result3))
-  (invoke1_4 (a1) (result1 result2 result3 result4))
-
-  (invoke2_1 (a1 a2) (result1))
-  (invoke2_2 (a1 a2) (result1 result2))
-  (invoke2_3 (a1 a2) (result1 result2 result3))
-  (invoke2_4 (a1 a2) (result1 result2 result3 result4))
-
-  (invoke3_1 (a1 a2 a3) (result1))
-  (invoke3_2 (a1 a2 a3) (result1 result2))
-  (invoke3_3 (a1 a2 a3) (result1 result2 result3))
-  (invoke3_4 (a1 a2 a3) (result1 result2 result3 result4))
-
-  (invoke4_1 (a1 a2 a3 a4) (result1))
-  (invoke4_2 (a1 a2 a3 a4) (result1 result2))
-  (invoke4_3 (a1 a2 a3 a4) (result1 result2 result3))
-  (invoke4_4 (a1 a2 a3 a4) (result1 result2 result3 result4))
-
-  )
 
 (qwerty/definterface ISeq
   (first () (r))
@@ -176,8 +148,6 @@
                                   (qwerty/. panic err)
                                   nil)))
 
-
-
 (qwerty/defgofun main ()
   (())
   (qwerty/do
@@ -195,8 +165,8 @@
                               ((rdr (qwerty/cast *bufio.Reader rdr)))
                               (qwerty/results (b size err) (qwerty/go-method-call rdr ReadRune)
                                               (qwerty/do
-                                                (qwerty/. NOP err)
-                                                (qwerty/. NOP size)
+                                                (identity err)
+                                                (identity size)
                                                 (qwerty/let* ((foo (qwerty/if (qwerty/nil? err)
                                                                      nil
                                                                      (raise err))))
@@ -205,12 +175,13 @@
                                                   (qwerty/do
                                                     (read_list rdr))
                                                   (raise (string_append_rune "unknown rune read " b)))))))))))
-                  (read_listd (qwerty/fn* (read read_list)
-                                          (qwerty/let* ((readd (qwerty/fn* () (read read read_list))))
-                                                       (qwerty/fn* (rdr)
-                                                                   (qwerty/let* ((read (readd)))
-                                                                                (qwerty/do
-                                                                                  (read rdr)))))))
+                  (read_listd (qwerty/fn*
+                               (read read_list)
+                               (qwerty/let* ((readd (qwerty/fn* () (read read read_list))))
+                                            (qwerty/fn* (rdr)
+                                                        (qwerty/let* ((read (readd)))
+                                                                     (qwerty/do
+                                                                       (read rdr)))))))
                   (read (readd readd read_listd))
                   (fd (open "./foo.lisp"))
                   (rdr (reader fd)))

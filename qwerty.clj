@@ -277,8 +277,8 @@
                                  i)))
        ~@(for [arg-count (range 0 (inc max-arity))
                return-count (range 1 (inc max-returns))
-               :let [function-name (symbol (str "invoke" arg-count "_" return-count))
-                     impl-function-name (symbol (str "invoke" (count args) "_" (count return-types)))]]
+               :let [function-name (symbol (str "Invoke" arg-count "_" return-count))
+                     impl-function-name (symbol (str "Invoke" (count args) "_" (count return-types)))]]
            (cond
             (and (= arg-count (count args))
                  (= return-count (count return-types)))
@@ -469,10 +469,10 @@
    (every? (complement coll?) application)
    (let [f (gensym 'f)]
      (lower
-      `(qwerty/let* ((~f (qwerty/cast ~'IFn ~(first application))))
+      `(qwerty/let* ((~f (qwerty/cast ~'qwerty.IFn ~(first application))))
                     (qwerty/results
                      ~values
-                     (qwerty/go-method-call ~f ~(symbol (str "invoke" (count (rest application)) "_"
+                     (qwerty/go-method-call ~f ~(symbol (str "Invoke" (count (rest application)) "_"
                                                              (count values)))
                                             ~@(rest application))
                      ~(lower body)))))
@@ -637,10 +637,10 @@
                              (qwerty/comment "line" ~(:line (meta form)))
                              ~(lower (map first bindings))))))
     (let [f (gensym 'f)]
-      (lower `(qwerty/let* ((~f (qwerty/cast ~'IFn ~(first form))))
+      (lower `(qwerty/let* ((~f (qwerty/cast ~'qwerty.IFn ~(first form))))
                            (qwerty/do
                              (qwerty/comment "line" ~(:line (meta form)))
-                             (qwerty/go-method-call ~f ~(symbol (str "invoke" (count (rest form)) "_1"))
+                             (qwerty/go-method-call ~f ~(symbol (str "Invoke" (count (rest form)) "_1"))
                                                     ~@(rest form))))))))
 
 (def info (atom {}))
@@ -823,14 +823,14 @@
 (defmethod go-seq 'qwerty/map-entry [[_ m k]]
   (if (= :return *context*)
     (print "return"))
-  (print "" (str m  "[" k "]"))
+  (print "" (str (munge m)  "[" k "]"))
   (if (= :return *context*)
     (println)))
 
 (defmethod go-seq 'qwerty/go-method-call [[_ target method & args]]
   (if (= :return *context*)
     (print "return"))
-  (print " " (str target "." method) "(")
+  (print " " (str (munge target) "." method) "(")
   (binding [*context* :statement]
     (doseq [v args]
       (go v)
@@ -942,7 +942,7 @@
         (println)))))
 
 (defmethod go-seq 'qwerty/go [[_  fun]]
-  (println "go" (str "(" fun ".(IFn)).invoke0_1()")))
+  (println "go" (str "(" fun ".(qwerty.IFn)).Invoke0_1()")))
 
 (defmethod go-seq 'qwerty/test [[_ condition label]]
   (println "if" (str "!(" condition ".(bool))") "{ goto" (str "L" label) "}"))
@@ -951,7 +951,7 @@
   (println "goto" (str "L" label)))
 
 (defmethod go-seq 'qwerty/results [[_  names exp body]]
-  (print (apply str (interpose \, names)) ":=")
+  (print (apply str (interpose \, (map munge names))) ":=")
   (binding [*context* :statement]
     (go exp))
   (println)
@@ -973,8 +973,8 @@
                         "interface{}"
                         type))
   (when (= *scope* :function)
-    (println "var" n (if (= 'interface type)
-                       "interface{}"
+    (println "var" (munge n) (if (= 'interface type)
+                               "interface{}"
                        type))))
 
 (defmethod go-seq 'qwerty/nil? [[_ v]]
