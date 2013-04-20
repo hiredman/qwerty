@@ -31,6 +31,9 @@
 (defmethod close-over Boolean [exp variables this-name]
   exp)
 
+(defmethod close-over Character [exp variables this-name]
+  exp)
+
 (defmethod close-over nil [& _] nil)
 
 (defmethod close-over clojure.lang.ISeq [exp variables this-name]
@@ -122,10 +125,19 @@
 (defmethod close-over-seq 'qwerty/nil? [[_ v] variables this-name]
   `(qwerty/nil? ~(close-over v variables this-name)))
 
+(defmethod close-over-seq 'qwerty/= [[_ a b] variables this-name]
+  `(qwerty/= ~(close-over a variables this-name)
+             ~(close-over b variables this-name)))
+
 (defmethod close-over-seq 'qwerty/go<- [[_ [result channel] body] variables this-name]
   `(qwerty/go<- (~result ~(close-over channel variables this-name))
                 ~(close-over body variables this-name)))
 
+(defmethod close-over-seq 'qwerty/defgomethod [exp variables this-name]
+  exp)
+
+(defmethod close-over-seq 'qwerty/defgofun [exp variables this-name]
+  exp)
 
 (defmethod close-over-seq :default [form variables this-name]
   (assert (not (and (symbol? (first form))
@@ -179,6 +191,23 @@
 (defmethod return-count-seq 'qwerty/go<- [[_ _ body]]
   (return-count body))
 
+(defmethod return-count-seq 'qwerty/labels [[_ & exprs]]
+  [(apply max
+          (for [e exprs
+                n (if (symbol? e)
+                    [1]
+                    (return-count e))]
+            n))])
+
+(defmethod return-count-seq 'qwerty/test [_]
+  [1])
+
+(defmethod return-count-seq 'qwerty/goto [_]
+  [1])
+
+(defmethod return-count-seq 'qwerty/go-method-call [_]
+  [1])
+
 (defmethod return-count-seq :default [x]
   (assert (and (seq? x)
                (not (and (symbol? (first x))
@@ -209,6 +238,9 @@
   s)
 
 (defmethod lower java.lang.Number [s]
+  s)
+
+(defmethod lower java.lang.Character [s]
   s)
 
 (defmethod lower clojure.lang.PersistentVector [v]
@@ -384,6 +416,8 @@
      `(qwerty/do ~@(rest (butlast lv))
                  ~(lower `(qwerty/set! ~f ~(lower (last lv)))))
      :else
+     (lower `(qwerty/set! ~f ~(lower lv)))
+     :else
      (assert false (pr-str lv)))))
 
 (defmethod lower-seq 'qwerty/+ [[_ a b]]
@@ -408,9 +442,9 @@
 (defmethod lower-seq 'qwerty/results [[_ values application body]]
   (cond
    (= (first application) 'qwerty/go-method-call)
-   `(qwerty/results ~values ~application ~body)
-   (= (first application) 'qwerty/.-)
-   `(qwerty/results ~values ~application ~body)
+   `(qwerty/results ~values ~application ~(lower body))
+   (= (first application) 'qwerty/.)
+   `(qwerty/results ~values ~application ~(lower body))
    (= (first application) 'qwerty/map-entry)
    (let [[_ m k] application]
      (if (and (not (coll? m))
@@ -555,6 +589,29 @@
        `(qwerty/let* ((~go ~(lower fun)))
                      (qwerty/go ~go))))))
 
+(defmethod lower-seq 'qwerty/= [[_ a b]]
+  (cond
+   (and (symbol? a)
+        (symbol? b))
+   `(qwerty/= ~a ~b)
+   (symbol? a)
+   (let [bb (gensym 'b)]
+     (lower
+      `(qwerty/let* ((~bb ~b))
+                    (qwerty/= ~a ~bb))))
+   (symbol? b)
+   (let [aa (gensym 'a)]
+     (lower
+      `(qwerty/let* ((~aa ~a))
+                    (qwerty/= ~aa ~b))))
+   :else
+   (let [aa (gensym 'a)
+         bb (gensym 'b)]
+     (lower
+      `(qwerty/let* ((~aa ~a)
+                     (~bb ~b))
+                    (qwerty/= ~aa ~bb))))))
+
 (defmethod lower-seq :default [form]
   (assert (or (coll? (first form))
               (not= "qwerty" (namespace (first form)))) (with-out-str (pprint form)))
@@ -608,6 +665,15 @@
   (print " ")
   (pr s)
   (print " ")
+  (if (= :return *context*)
+    (println)))
+
+(defmethod go java.lang.Character [s]
+  (if (= :return *context*)
+    (print "return"))
+  (print " '")
+  (print s)
+  (print "' ")
   (if (= :return *context*)
     (println)))
 
@@ -770,6 +836,7 @@
     (println)))
 
 (defmethod go-seq 'qwerty/set! [[_ thing value]]
+  (println "/* qwerty/set!" value "*/")
   (if (= *scope* :function)
     (do
       (binding [*context* :statement]
@@ -800,7 +867,8 @@
 (defmethod go-seq 'qwerty/cast [[_ t n]]
   (if (= :return *context*)
     (print "return"))
-  (print (str n ".("t ")"))
+  (go n)
+  (print ".(" t ")")
   (if (= :return *context*)
     (println)))
 
@@ -808,6 +876,13 @@
   (if (= :return *context*)
     (print "return"))
   (print "(" a "+" b ")")
+  (if (= :return *context*)
+    (println)))
+
+(defmethod go-seq 'qwerty/= [[_ a b]]
+  (if (= :return *context*)
+    (print "return"))
+  (print "(" a "==" b ")")
   (if (= :return *context*)
     (println)))
 
@@ -840,12 +915,14 @@
 
 (defmethod go-seq 'qwerty/values [[_  & args]]
   (assert (= *context* :return))
+  (println "/* qwerty/values */")
   (println "return" (apply str (interpose \, (for [a args]
                                                (if (nil? a)
                                                  "nil"
                                                  a))))))
 
 (defmethod go-seq 'qwerty/labels [[_  & e]]
+  (println "/* qwerty/labels */")
   (doseq [e e]
     (if (symbol? e)
       (println (str "L" e ":"))
@@ -880,6 +957,7 @@
   (println "/*" (apply print-str args) "*/"))
 
 (defmethod go-seq 'qwerty/local [[_ n type]]
+  (println "/* qwerty/local */")
   (swap! info assoc n (if (= 'interface type)
                         "interface{}"
                         type))
@@ -889,6 +967,7 @@
                        type))))
 
 (defmethod go-seq 'qwerty/nil? [[_ v]]
+  (print "/* qwerty/nil? */")
   (println "(" v "== nil" ")"))
 
 (defmulti raise-decls type)
@@ -915,6 +994,15 @@
     `(qwerty/do
        ~@defs
        (qwerty/defgofun ~function-name ~args ~types
+         ~body))))
+
+(defmethod raise-decls-seq 'qwerty/defgomethod [[_ method-name type-name args returns body]]
+  (let [body (if (seq? body) body `(qwerty/do ~body))
+        defs (doall (filter decl? body))
+        body (doall (map raise-decls (remove decl? body)))]
+    `(qwerty/do
+       ~@defs
+       (qwerty/defgomethod ~method-name ~type-name ~args ~returns
          ~body))))
 
 (defmethod raise-decls-seq 'qwerty/let* [[_ bindings body]]
@@ -969,6 +1057,7 @@
 (defmethod raise-locals clojure.lang.Symbol [exp env] [exp env])
 (defmethod raise-locals java.lang.String [exp env] [exp env])
 (defmethod raise-locals java.lang.Number [exp env] [exp env])
+(defmethod raise-locals java.lang.Character [exp env] [exp env])
 (defmethod raise-locals nil [exp env] [exp env])
 (defmethod raise-locals-seq 'qwerty/struct [exp env]
   [exp env])
@@ -1012,6 +1101,7 @@
 (defmethod raise-locals-seq 'qwerty/go-> [exp env] [exp env])
 (defmethod raise-locals-seq 'qwerty/go<- [exp env] [exp env])
 (defmethod raise-locals-seq 'qwerty/go [exp env] [exp env])
+(defmethod raise-locals-seq 'qwerty/= [exp env] [exp env])
 
 (defn raise-locals-out-of-labels [form seen]
   (first (expand form seen raise-locals)))
@@ -1035,8 +1125,8 @@
        (println "import " (pr-str (second form)))
        :else (let [m (f (lower (α-convert form {})))]
                #_(binding [*out* *err*]
-                   (pprint m)
-                   (println))
+                 (pprint m)
+                 (println))
                (go m)))
       (println)
       (recur (read *in* false eof)))))

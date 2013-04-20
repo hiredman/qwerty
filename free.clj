@@ -35,9 +35,25 @@
 (defmethod free-seq 'qwerty/+ [exp env] [exp env])
 (defmethod free-seq 'qwerty/values [exp env] [exp env])
 (defmethod free java.lang.Number [exp env] [exp env])
+(defmethod free java.lang.Character [exp env] [exp env])
 (defmethod free-seq 'qwerty/go [exp env] [exp env])
 (defmethod free-seq 'qwerty/go<- [[_ [result channel] body :as exp] env]
   [exp (update-in env [:bound] conj result)])
+(defmethod free-seq 'qwerty/= [exp env] [exp env])
+(defmethod free-seq 'qwerty/labels [[_ & body] env]
+  [`(qwerty/labels ~@body)
+   (reduce
+    (fn [env exp]
+      (if (symbol? exp)
+        env
+        (let [[_ new-env] (expand exp env free)]
+          (into env new-env))))
+    env body)])
+(defmethod free-seq 'qwerty/test [exp env] [exp env])
+(defmethod free-seq 'qwerty/goto [exp env] [exp env])
+(defmethod free-seq 'qwerty/go-method-call [exp env] [exp env])
+(defmethod free-seq 'qwerty/fn* [[_ args body :as exp] env]
+  [exp (update-in env [:bound] into args)])
 
 (defn free-variables [exp]
   (:free (second (expand exp {:free #{}

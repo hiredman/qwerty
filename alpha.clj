@@ -130,6 +130,10 @@
                           ~@(for [a args]
                               (α-convert a env))))
 
+(defmethod α-convert-seq 'qwerty/= [[_ a b] env]
+  `(qwerty/= ~(α-convert a env)
+             ~(α-convert b env)))
+
 (defmethod α-convert-seq 'qwerty/go-> [[_ [value channel] body] env]
   `(qwerty/go-> (~(α-convert value env)
                  ~(α-convert channel env))

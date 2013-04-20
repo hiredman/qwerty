@@ -1,3 +1,4 @@
+
 (defmulti make (fn [form new-children] (type form)))
 (defmulti make-seq (fn [form new-children] (first form)))
 
@@ -9,6 +10,11 @@
 
 (defmethod children-of clojure.lang.Symbol [s] ())
 (defmethod make clojure.lang.Symbol [form new-children]
+  (assert (empty? new-children))
+  form)
+
+(defmethod children-of java.lang.Character [s] ())
+(defmethod make java.lang.Character [form new-children]
   (assert (empty? new-children))
   form)
 
@@ -196,6 +202,17 @@
   (assert (= 1 (count new-children)))
   `(qwerty/go ~@new-children))
 
+(defmethod children-of-seq 'qwerty/fn* [[_ args body]]
+  (list body))
+(defmethod make-seq 'qwerty/fn* [[_ args body] new-children]
+  (assert (= 1 (count new-children)))
+  `(qwerty/fn* ~args ~@new-children))
+
+(defmethod children-of-seq 'qwerty/= [[_ & args]]
+  args)
+(defmethod make-seq 'qwerty/= [_ new-children]
+  (assert (= 2 (count new-children)))
+  `(qwerty/= ~@new-children))
 
 (defmethod children-of-seq :default [exp]
   (assert (not (and (symbol? (first exp))
