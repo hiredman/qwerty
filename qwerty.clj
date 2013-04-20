@@ -55,7 +55,7 @@
   `(qwerty/+ ~(close-over a variables this-name)
              ~(close-over b variables this-name)))
 
-(defmethod close-over-seq 'qwerty/let* [[_ bindings body] variables this-name]
+(defmethod close-over-seq 'qwerty/let* [[_ bindings body :as form] variables this-name]
   (let [b (gensym)
         r (reduce
            (fn [b [n value]]
@@ -63,8 +63,10 @@
                (conj b [n (close-over value (s/difference variables bound) this-name)])))
            []
            (concat bindings [[b body]]))]
-    `(qwerty/let* ~(butlast r)
-                  ~(second (last r)))))
+    (with-meta
+      `(qwerty/let* ~(butlast r)
+                    ~(second (last r)))
+      (meta form))))
 
 (defmethod close-over-seq 'qwerty/new [expr variables this-name]
   expr)
@@ -334,10 +336,11 @@
 (defmethod lower-seq 'qwerty/do [[_ & body]]
   (cons 'qwerty/do (doall (map lower body))))
 
-(defmethod lower-seq 'qwerty/let* [[_ bindings & body]]
+(defmethod lower-seq 'qwerty/let* [[_ bindings & body :as form]]
   (assert (not-any? (partial = 'qwerty/set!) (first bindings))
           (pr-str `(qwerty/let* ~bindings ~@body)))
   `(qwerty/do
+     (qwerty/comment "line" ~(:line (meta form)))
      ~@(doall (for [[n v] bindings]
                 (cond
                  (and (seq? v)

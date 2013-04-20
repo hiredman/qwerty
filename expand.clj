@@ -228,7 +228,10 @@
 (defn expand [form env f]
   (loop [form form
          env env]
-    (let [[new-form new-env] (f form env)]
+    (let [[new-form new-env] (f form env)
+          new-form (if (instance? clojure.lang.IMeta new-form)
+                     (with-meta new-form (meta form))
+                     new-form)]
       (if (= new-form form)
         (let [[new-env new-children] (reduce
                                       (fn [[env children] form]

@@ -203,40 +203,38 @@
 ;;                                                                                  (read_list read rdr))
 ;;                                                                                 (raise "foo")))))))))
 
+(qwerty/godef read
+              (qwerty/fn* (read read_list)
+                          (qwerty/let* ((rd (qwerty/fn* () (read read read_list)))
+                                        (rd_list (qwerty/fn* () (read_list read read_list))))
+                                       (qwerty/fn* (rdr)
+                                                   (qwerty/let* ((r (read))
+                                                                 (rl (read_list)))
+                                                                (qwerty/do
+                                                                 (identity r)
+                                                                 (qwerty/if (qwerty/nil? rdr)
+                                                                            "Hello World"
+                                                                            (rl rdr))))))))
+
+(qwerty/godef read_list
+              (qwerty/fn* (read read_list)
+                          (qwerty/let* ((rd (qwerty/fn* () (read read read_list)))
+                                        (rd_list (qwerty/fn* () (read_list read read_list))))
+                                       (qwerty/fn* (rdr)
+                                                   (qwerty/let* ((r (rd))
+                                                                 (rl (rd_list)))
+                                                                (qwerty/do
+                                                                 (println "read_list")
+                                                                 (r nil)))))))
+
 (qwerty/defgofun main ()
                  (())
                  (qwerty/do
                   (qwerty/. test2)
                   (qwerty/. test1)
-                  #_((qwerty/fn* (x) ((qwerty/fn* (y) (println y)) x)) "Hello World")
-                  (qwerty/let* ((read (qwerty/fn* (read read_list)
-                                                  (qwerty/let* ((read (qwerty/fn* () (read read read_list)))
-                                                                (read_list (qwerty/fn* () (read_list read read_list))))
-                                                               (qwerty/fn* (rdr)
-                                                                           (qwerty/let* ((read (read))
-                                                                                         (read_list (read_list)))
-                                                                                        (qwerty/do
-                                                                                         (identity read)
-                                                                                         (qwerty/if (qwerty/nil? rdr)
-                                                                                                    "Hello World"
-                                                                                                    (read_list rdr))))))))
-                                (read_list (qwerty/fn* (read read_list)
-                                                       (qwerty/let* ((read (qwerty/fn* () (read read read_list)))
-                                                                     (read_list (qwerty/fn* () (read_list read read_list))))
-                                                                    (qwerty/fn* (rdr)
-                                                                                (qwerty/let* ((read (read))
-                                                                                              (read_list (read_list)))
-                                                                                             (qwerty/do
-                                                                                              (identity read_list)
-                                                                                              (read nil))))))))
-                               (qwerty/let* ((read (qwerty/fn* () (read read read_list)))
-                                             (read_list (qwerty/fn* () (read_list read read_list)))
-                                             (read (read))
-                                             (read_list (read_list)))
-                                            (read "foo")))
-                  #_(qwerty/let* ((fd (open "./foo.lisp"))
-                                (rdr (reader fd)))
-                               (read rdr))))
+                  (qwerty/let* ((read (read read read_list))
+                                (read_list (read_list read read_list)))
+                               (println (read "foo")))))
 
 
 ;; (make-channel x)

@@ -82,7 +82,7 @@
 (defmethod α-convert-seq 'qwerty/values [[_ & body] env]
   (doall `(qwerty/values ~@(doall (map #(α-convert % env) body)))))
 
-(defmethod α-convert-seq 'qwerty/let* [[_ bindings body] env]
+(defmethod α-convert-seq 'qwerty/let* [[_ bindings body :as form] env]
   (let [{:keys [bindings env]} (reduce
                                 (fn [{:keys [bindings env]} [n v]]
                                   (let [nn (gensym n)]
@@ -90,9 +90,11 @@
                                      :env (assoc env n nn)}))
                                 {:bindings []
                                  :env env} bindings)]
-    (doall
-     `(qwerty/let* ~(seq bindings)
-                   ~(α-convert body env)))))
+    (with-meta
+      (doall
+       `(qwerty/let* ~(seq bindings)
+                     ~(α-convert body env)))
+      (meta form))))
 
 (defmethod α-convert-seq 'qwerty/if [[_ condition then else] env]
   (doall
