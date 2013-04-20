@@ -3,7 +3,6 @@
 (qwerty/import "os")
 (qwerty/import "io")
 (qwerty/import "bufio")
-;; (qwerty/import "types")
 
 (qwerty/struct Cons
                car interface
@@ -100,23 +99,23 @@
                                                            (d (qwerty/cast string (qwerty/. string c))))
                                                           (qwerty/+ a d))))
 
-;; (qwerty/defgofun stdin_rune_ ()
-;;                  (() rune)
-;;                  (qwerty/do
-;;                   (qwerty/local x rune)
-;;                   (qwerty/. fmt.Scanf "%c" (qwerty/goderef x))
-;;                   x))
+;; ;; (qwerty/defgofun stdin_rune_ ()
+;; ;;                  (() rune)
+;; ;;                  (qwerty/do
+;; ;;                   (qwerty/local x rune)
+;; ;;                   (qwerty/. fmt.Scanf "%c" (qwerty/goderef x))
+;; ;;                   x))
 
-;; (qwerty/defgofun stdin_int_ ()
-;;                  (() int)
-;;                  (qwerty/do
-;;                   (qwerty/local x int)
-;;                   (qwerty/. fmt.Scanf "%d" (qwerty/goderef x))
-;;                   x))
+;; ;; (qwerty/defgofun stdin_int_ ()
+;; ;;                  (() int)
+;; ;;                  (qwerty/do
+;; ;;                   (qwerty/local x int)
+;; ;;                   (qwerty/. fmt.Scanf "%d" (qwerty/goderef x))
+;; ;;                   x))
 
-;; (qwerty/godef stdin-int (qwerty/fn* () (qwerty/. stdin_int_)))
+;; ;; (qwerty/godef stdin-int (qwerty/fn* () (qwerty/. stdin_int_)))
 
-;; (qwerty/godef stdin-rune (qwerty/fn* () (qwerty/. stdin_rune_)))
+;; ;; (qwerty/godef stdin-rune (qwerty/fn* () (qwerty/. stdin_rune_)))
 
 (qwerty/defgofun test1 ()
                  (())
@@ -177,71 +176,35 @@
                                  (qwerty/. panic err)
                                  nil)))
 
-;; (qwerty/godef read_list_fn
-;;               (qwerty/fn* (read)
-;;                           (qwerty/fn* (rdr)
-;;                                       (read rdr))))
-
-;; (qwerty/godef )
-
-;; (qwerty/godef read_fn
-;;               (qwerty/fn* (read_list)
-;;                           (qwerty/fn* (reader)
-;;                                       (qwerty/let* ((rdr (qwerty/cast *bufio.Reader reader)))
-;;                                                    (qwerty/do
-;;                                                     (qwerty/results (b size err) (qwerty/go-method-call rdr ReadRune)
-;;                                                                     (qwerty/do
-;;                                                                      (qwerty/. NOP err)
-;;                                                                      (qwerty/. NOP size)
-;;                                                                      (qwerty/let* ((foo (qwerty/if (qwerty/nil? err)
-;;                                                                                                    nil
-;;                                                                                                    (raise err))))
-;;                                                                                   (qwerty/. NOP foo))
-;;                                                                      (qwerty/if (qwerty/= b \()
-;;                                                                                 (qwerty/do
-;;                                                                                  ;;(qwerty/go-method-call rdr UnreadRune)
-;;                                                                                  (read_list read rdr))
-;;                                                                                 (raise "foo")))))))))
-
-(qwerty/godef read
-              (qwerty/fn* (read read_list)
-                          (qwerty/let* ((rd (qwerty/fn* () (read read read_list)))
-                                        (rd_list (qwerty/fn* () (read_list read read_list))))
-                                       (qwerty/fn* (rdr)
-                                                   (qwerty/let* ((r (read))
-                                                                 (rl (read_list)))
-                                                                (qwerty/do
-                                                                 (identity r)
-                                                                 (qwerty/if (qwerty/nil? rdr)
-                                                                            "Hello World"
-                                                                            (rl rdr))))))))
-
-(qwerty/godef read_list
-              (qwerty/fn* (read read_list)
-                          (qwerty/let* ((rd (qwerty/fn* () (read read read_list)))
-                                        (rd_list (qwerty/fn* () (read_list read read_list))))
-                                       (qwerty/fn* (rdr)
-                                                   (qwerty/let* ((r (rd))
-                                                                 (rl (rd_list)))
-                                                                (qwerty/do
-                                                                 (println "read_list")
-                                                                 (r nil)))))))
-
 (qwerty/defgofun main ()
                  (())
                  (qwerty/do
                   (qwerty/. test2)
                   (qwerty/. test1)
-                  (qwerty/let* ((read (read read read_list))
-                                (read_list (read_list read read_list)))
-                               (println (read "foo")))))
-
-
-;; (make-channel x)
-
-;; (qwerty/select
-;;  (qwerty/go<- ((i3,ok) ch)
-;;               body)
-
-;;  (qwerty/go-> (value ch)
-;;               body))
+                  (qwerty/let* ((readd (qwerty/fn* (read read_list)
+                                                   (qwerty/let* ((read_listd (qwerty/fn* () (read_list read read_list))))
+                                                                (qwerty/fn* (rdr)
+                                                                            (qwerty/let* ((read_list (read_listd)))
+                                                                                         (qwerty/let* ((rdr (qwerty/cast *bufio.Reader rdr)))
+                                                                                                      (qwerty/results (b size err) (qwerty/go-method-call rdr ReadRune)
+                                                                                                                      (qwerty/do
+                                                                                                                       (qwerty/. NOP err)
+                                                                                                                       (qwerty/. NOP size)
+                                                                                                                       (qwerty/let* ((foo (qwerty/if (qwerty/nil? err)
+                                                                                                                                                     nil
+                                                                                                                                                     (raise err))))
+                                                                                                                                    (qwerty/. NOP foo))
+                                                                                                                       (qwerty/if (qwerty/= b \()
+                                                                                                                                  (qwerty/do
+                                                                                                                                   (read_list rdr))
+                                                                                                                                  (raise (string_append_rune "unknown rune read " b)))))))))))
+                                (read_listd (qwerty/fn* (read read_list)
+                                                        (qwerty/let* ((readd (qwerty/fn* () (read read read_list))))
+                                                                     (qwerty/fn* (rdr)
+                                                                                 (qwerty/let* ((read (readd)))
+                                                                                              (qwerty/do
+                                                                                               (read rdr)))))))
+                                (read (readd readd read_listd))
+                                (fd (open "./foo.lisp"))
+                                (rdr (reader fd)))
+                               (println (read rdr)))))
