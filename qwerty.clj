@@ -323,7 +323,13 @@
 (defmethod lower-seq 'qwerty/. [[_ func & args]]
   (if (every? (complement coll?) args)
     `(qwerty/. ~func ~@(doall args))
-    `(qwerty/. ~func ~@(doall (map lower args)))))
+    (let [bindings (for [a args]
+                     (if (symbol? a)
+                       (list a a)
+                       (list (gensym 'a) (lower a))))]
+      (lower
+       `(qwerty/let* ~(remove #(= (first %) (second %)) bindings)
+                     (qwerty/. ~func ~@(map first bindings)))))))
 
 (defmethod lower-seq 'qwerty/do [[_ & body]]
   (cons 'qwerty/do (doall (map lower body))))
@@ -352,7 +358,7 @@
   (if (coll? v)
     (let [o (gensym 'o)]
       `(qwerty/let* ((~o ~(lower v)))
-                    (qwerty/. ~o f)))
+                    (qwerty/.- ~o f)))
     `(qwerty/.- ~v ~f)))
 
 (defmethod lower-seq 'qwerty/struct [expr]
@@ -415,8 +421,10 @@
      (= 'qwerty/do (first lv))
      `(qwerty/do ~@(rest (butlast lv))
                  ~(lower `(qwerty/set! ~f ~(lower (last lv)))))
-     :else
-     (lower `(qwerty/set! ~f ~(lower lv)))
+     ;; :else
+     ;; (let [ff (gensym 'f)]
+     ;;   (lower `(qwerty/let* ((~ff ~(lower lv)))
+     ;;                        (qwerty/set! ~f ~ff))))
      :else
      (assert false (pr-str lv)))))
 
@@ -1102,6 +1110,7 @@
 (defmethod raise-locals-seq 'qwerty/go<- [exp env] [exp env])
 (defmethod raise-locals-seq 'qwerty/go [exp env] [exp env])
 (defmethod raise-locals-seq 'qwerty/= [exp env] [exp env])
+(defmethod raise-locals-seq 'qwerty/let* [exp env] [exp env])
 
 (defn raise-locals-out-of-labels [form seen]
   (first (expand form seen raise-locals)))

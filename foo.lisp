@@ -99,23 +99,23 @@
                                                            (d (qwerty/cast string (qwerty/. string c))))
                                                           (qwerty/+ a d))))
 
-(qwerty/defgofun stdin_rune_ ()
-                 (() rune)
-                 (qwerty/do
-                  (qwerty/local x rune)
-                  (qwerty/. fmt.Scanf "%c" (qwerty/goderef x))
-                  x))
+;; (qwerty/defgofun stdin_rune_ ()
+;;                  (() rune)
+;;                  (qwerty/do
+;;                   (qwerty/local x rune)
+;;                   (qwerty/. fmt.Scanf "%c" (qwerty/goderef x))
+;;                   x))
 
-(qwerty/defgofun stdin_int_ ()
-                 (() int)
-                 (qwerty/do
-                  (qwerty/local x int)
-                  (qwerty/. fmt.Scanf "%d" (qwerty/goderef x))
-                  x))
+;; (qwerty/defgofun stdin_int_ ()
+;;                  (() int)
+;;                  (qwerty/do
+;;                   (qwerty/local x int)
+;;                   (qwerty/. fmt.Scanf "%d" (qwerty/goderef x))
+;;                   x))
 
-(qwerty/godef stdin-int (qwerty/fn* () (qwerty/. stdin_int_)))
+;; (qwerty/godef stdin-int (qwerty/fn* () (qwerty/. stdin_int_)))
 
-(qwerty/godef stdin-rune (qwerty/fn* () (qwerty/. stdin_rune_)))
+;; (qwerty/godef stdin-rune (qwerty/fn* () (qwerty/. stdin_rune_)))
 
 (qwerty/defgofun test1 ()
                  (())
@@ -207,7 +207,7 @@
                  (qwerty/do
                   (qwerty/. test2)
                   (qwerty/. test1)
-                  ((qwerty/fn* (x) ((qwerty/fn* (y) (println y)) y)) "Hello World")
+                  ((qwerty/fn* (x) ((qwerty/fn* (y) (println y)) x)) "Hello World")
                   #_(qwerty/let* ((read (qwerty/fn* (read read_list)
                                                   (qwerty/let* ((read (qwerty/fn* () (read read read_list)))
                                                                 (read_list (qwerty/fn* () (read_list read read_list))))
@@ -231,7 +231,7 @@
                                              (read (read))
                                              (read_list (read_list)))
                                             (read "foo")))
-                  (qwerty/let* ((fd (open "./foo.lisp"))
+                  #_(qwerty/let* ((fd (open "./foo.lisp"))
                                 (rdr (reader fd)))
                                (read rdr))))
 
