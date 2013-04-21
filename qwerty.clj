@@ -4,6 +4,9 @@
          '[clojure.pprint :refer [pprint]]
          '[clojure.set :as s])
 
+(defn gensym [s]
+  (clojure.core/gensym (symbol (str s (mod (System/currentTimeMillis) 10000)))))
+
 (declare ^:dynamic *context*)
 (declare ^:dynamic *scope*)
 (declare ^:dynamic *package*)
@@ -265,11 +268,11 @@
 
 (defmethod lower-seq 'qwerty/fn* [form]
   (let [[_ args body] form
-        function-type-name (gensym (str 'Tfn (System/currentTimeMillis)))
-        struct-name (gensym (str 'Sfn (System/currentTimeMillis)))
+        function-type-name (gensym 'Tfn)
+        struct-name (gensym 'Sfn)
         struct-pointer (symbol (str "*" (name struct-name)))
         local-name (gensym 'fn)
-        constructor (gensym (str 'Cfn (System/currentTimeMillis)))
+        constructor (gensym 'Cfn)
         lowered-body (lower body)
         free-in-body (distinct (remove (set args) (free-variables body)))
         this-name (gensym 'this)
@@ -280,6 +283,17 @@
                       ~@(doall (for [v free-in-body
                                      i [v 'interface]]
                                  i)))
+       ;; ~@(for [return-count (range 1 (inc max-returns))
+       ;;         :let [apply-name (symbol (str "Apply" return-count))
+       ;;               values (repeatedly return-count #(gensym 'values))
+       ;;               passed-args (take  args)
+       ;;               args (gensym 'args)
+       ;;               function-name (symbol (str "Invoke" (count args) "_" return-count))
+       ;;               spread-args (repeatedly (count args) #(gensym 'values))]]
+       ;;     `(qwerty/defgomethod ~apply-name ~struct-pointer (~args)
+       ;;        ~(repeatedly return-count #(gensym 'r))
+       ;;        (qwerty/results ~values (go-method-call ~this-name ~function-name)
+       ;;         )))
        ~@(for [arg-count (range 0 (inc max-arity))
                return-count (range 1 (inc max-returns))
                :let [function-name (symbol (str "Invoke" arg-count "_" return-count))
@@ -448,7 +462,7 @@
 
 (defmethod lower-seq 'qwerty/godef [[_ n v]]
   (if (coll? v)
-    (let [a_ (gensym (str 'godef (System/currentTimeMillis)))]
+    (let [a_ (gensym 'godef)]
       (lower
        `(qwerty/let* ((~a_ ~(lower v)))
                      (qwerty/godef ~n ~a_))))

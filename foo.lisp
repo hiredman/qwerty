@@ -3,7 +3,6 @@
 (qwerty/import "os")
 (qwerty/import "io")
 (qwerty/import "bufio")
-(qwerty/import "qwerty/lisp")
 
 (qwerty/struct Var
                name string
