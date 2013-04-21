@@ -108,15 +108,16 @@
                                   (qwerty/. panic err)
                                   nil)))
 
-(qwerty/set! foo (qwerty/. qwerty.InternVar "foo" "Hello Var World"))
+(qwerty/set! foo (qwerty/. qwerty.InternVar (qwerty/. qwerty.Symbol "foo") "Hello Var World"))
 
 (qwerty/defgofun main ()
   (())
   (qwerty/do
     (qwerty/. test2)
     (qwerty/. test1)
-    (println (qwerty.Deref (qwerty/. qwerty.Var "foo")))
+    (println (qwerty.Deref (qwerty/. qwerty.Var (qwerty/. qwerty.Symbol "foo"))))
     (println (qwerty.Deref foo))
+    (println (qwerty/. qwerty.Symbol "foo/bar"))
     (qwerty/let* ((readd (qwerty/fn*
                           (read read_list)
                           (qwerty/let*
@@ -150,5 +151,3 @@
                   (fd (open "./foo.lisp"))
                   (rdr (reader fd)))
                  (println (read rdr)))))
-
-

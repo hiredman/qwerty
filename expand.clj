@@ -71,11 +71,11 @@
   (assert (empty? new-children) (pr-str new-children))
   form)
 
-(defmethod children-of-seq 'qwerty/defgomethod [[_ method-name type-name args returns body]]
+(defmethod children-of-seq 'qwerty/defgomethod [[_ method-name type-name args returns types body]]
   (list body))
-(defmethod make-seq 'qwerty/defgomethod [[_ method-name type-name args returns body] new-children]
+(defmethod make-seq 'qwerty/defgomethod [[_ method-name type-name args returns types body] new-children]
   (assert (= 1 (count new-children)) (pr-str new-children))
-  `(qwerty/defgomethod ~method-name ~type-name ~args ~returns ~(first new-children)))
+  `(qwerty/defgomethod ~method-name ~type-name ~args ~returns ~types ~(first new-children)))
 
 (defmethod children-of-seq 'qwerty/. [[_ method-name & args]]
   args)

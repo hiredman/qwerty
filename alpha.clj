@@ -44,10 +44,10 @@
 (defmethod α-convert-seq 'qwerty/godef [[_ n body] env]
   `(qwerty/godef ~n ~(α-convert body env)))
 
-(defmethod α-convert-seq 'qwerty/defgomethod [[_ method-name type-name args returns body] env]
+(defmethod α-convert-seq 'qwerty/defgomethod [[_ method-name type-name args returns types body] env]
   (let [new-env (for [a args]
                   [a (gensym a)])]
-    `(qwerty/defgomethod ~method-name ~type-name ~(map second new-env) ~returns
+    `(qwerty/defgomethod ~method-name ~type-name ~(map second new-env) ~returns ~types
        ~(α-convert body (into env new-env)))))
 
 (defmethod α-convert-seq 'qwerty/fn* [[_ args body] env]

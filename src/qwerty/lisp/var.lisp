@@ -8,6 +8,7 @@
 (qwerty/godef the_vars (qwerty/make "map[string]*AVar"))
 
 (qwerty/defgomethod DerefMethod *AVar (the_var) (r)
+  ((interface) (interface))
   (qwerty/.- the_var value))
 
 (qwerty/godef Deref (qwerty/fn* (v)
@@ -16,7 +17,8 @@
 
 (qwerty/defgofun Var (name)
   ((interface) (interface))
-  (qwerty/let* ((n (qwerty/cast string name))
+  (qwerty/let* ((n (qwerty/cast *ASymbol name))
+                (n (qwerty/cast string (qwerty/.- n name)))
                 (m (qwerty/cast "map[string]*AVar" the_vars)))
                (qwerty/results (value found) (qwerty/map-entry m n)
                                (qwerty/if found

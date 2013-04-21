@@ -314,6 +314,8 @@
                  (= return-count (count return-types)))
             `(qwerty/defgomethod ~function-name ~struct-pointer ~(cons this-name args)
                ~(repeatedly return-count #(gensym 'r))
+               (~(repeat arg-count 'interface)
+                ~(repeat return-count 'interface))
                (qwerty/do
                  (qwerty/comment "line" ~(:line (meta form)))
                  ~(close-over lowered-body (set free-in-body) this-name)))
@@ -322,6 +324,8 @@
             (let [values (repeatedly (count return-types) #(gensym 'values))]
               `(qwerty/defgomethod ~function-name ~struct-pointer ~(cons this-name args)
                  ~(repeatedly return-count #(gensym 'r))
+                 (~(repeat arg-count 'interface)
+                  ~(repeat return-count 'interface))
                  (qwerty/results ~values (qwerty/go-method-call ~this-name ~impl-function-name ~@args)
                                  (qwerty/do
                                    ~@(for [v (drop return-count values)]
@@ -330,6 +334,8 @@
             :else
             `(qwerty/defgomethod ~function-name ~struct-pointer ~(cons this-name (repeatedly arg-count #(gensym 'a)))
                ~(repeatedly return-count #(gensym 'r))
+               (~(repeat arg-count 'interface)
+                ~(repeat return-count 'interface))
                (qwerty/do
                  (qwerty/. ~'panic ~(str "bad arity " arg-count "-" return-count))
                  (qwerty/values ~@(repeat return-count nil))))))
@@ -348,8 +354,8 @@
   `(qwerty/defgofun ~function-name ~(or args ()) ~types
      ~(lower `(qwerty/do ~@body))))
 
-(defmethod lower-seq 'qwerty/defgomethod [[_ method-name type-name args returns body]]
-  `(qwerty/defgomethod ~method-name ~type-name ~args ~returns
+(defmethod lower-seq 'qwerty/defgomethod [[_ method-name type-name args returns types body]]
+  `(qwerty/defgomethod ~method-name ~type-name ~args ~returns ~types
      ~(lower body)))
 
 (defmethod lower-seq 'qwerty/. [[_ func & args]]
@@ -785,13 +791,21 @@
     (println)))
 
 
-(defmethod go-seq 'qwerty/defgomethod [[_ method-name type-name args returns body]]
+(defmethod go-seq 'qwerty/defgomethod [[_ method-name type-name args returns types body]]
   (binding [*scope* :function]
     (let [[this-name & args] args]
       (println "func (" this-name type-name ")" method-name
-               (str "(" (apply str (interpose \, (for [arg args]
-                                                   (str arg " interface{}")))) ")")
-               (str "(" (apply str (interpose \, (repeat (count returns) "interface{}"))) ")")
+               (str "(" (apply str (interpose \,
+                                              (map
+                                               (fn [name type]
+                                                 (str name " " (if (= 'interface type)
+                                                                 "interface {}"
+                                                                 type)))
+                                               args (first types)))) ")")
+               (str "(" (apply str (interpose \, (for [i (second types)]
+                                                   (if (= i 'interface)
+                                                     "interface {}"
+                                                     i)))) ")")
                "{"))
     (binding [*context* (if-not (zero? (count returns))
                           :return
@@ -1059,13 +1073,13 @@
        (qwerty/defgofun ~function-name ~args ~types
          ~body))))
 
-(defmethod raise-decls-seq 'qwerty/defgomethod [[_ method-name type-name args returns body]]
+(defmethod raise-decls-seq 'qwerty/defgomethod [[_ method-name type-name args returns types body]]
   (let [body (if (seq? body) body `(qwerty/do ~body))
         defs (doall (filter decl? body))
         body (doall (map raise-decls (remove decl? body)))]
     `(qwerty/do
        ~@defs
-       (qwerty/defgomethod ~method-name ~type-name ~args ~returns
+       (qwerty/defgomethod ~method-name ~type-name ~args ~returns ~types
          ~body))))
 
 (defmethod raise-decls-seq 'qwerty/let* [[_ bindings body]]
