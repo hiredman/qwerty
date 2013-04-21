@@ -265,11 +265,11 @@
 
 (defmethod lower-seq 'qwerty/fn* [form]
   (let [[_ args body] form
-        function-type-name (gensym 'Tfn)
-        struct-name (gensym 'Sfn)
+        function-type-name (gensym (str 'Tfn (System/currentTimeMillis)))
+        struct-name (gensym (str 'Sfn (System/currentTimeMillis)))
         struct-pointer (symbol (str "*" (name struct-name)))
         local-name (gensym 'fn)
-        constructor (gensym 'Cfn)
+        constructor (gensym (str 'Cfn (System/currentTimeMillis)))
         lowered-body (lower body)
         free-in-body (distinct (remove (set args) (free-variables body)))
         this-name (gensym 'this)
@@ -448,7 +448,7 @@
 
 (defmethod lower-seq 'qwerty/godef [[_ n v]]
   (if (coll? v)
-    (let [a_ (gensym 'v)]
+    (let [a_ (gensym (str 'godef (System/currentTimeMillis)))]
       (lower
        `(qwerty/let* ((~a_ ~(lower v)))
                      (qwerty/godef ~n ~a_))))
@@ -980,7 +980,7 @@
   (when (= *scope* :function)
     (println "var" (munge n) (if (= 'interface type)
                                "interface{}"
-                       type))))
+                               type))))
 
 (defmethod go-seq 'qwerty/nil? [[_ v]]
   (print "/* qwerty/nil? */")
