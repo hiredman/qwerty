@@ -32,3 +32,18 @@
                                     (qwerty/if (qwerty/nil? lst)
                                       0
                                       (iadd 1 (Cdr lst)))))
+
+(qwerty/godef mapV (Var (Symbol "qwerty/map")))
+
+(qwerty/godef _
+              (qwerty/. InternVar (Symbol "qwerty/map")
+                        (qwerty/fn* (f lst)
+                                    (qwerty/if (qwerty/nil? lst)
+                                      nil
+                                      (Cons (f (Car lst))
+                                            ((qwerty/go-method-call (qwerty/cast *AVar mapV) Deref) f (Cdr lst)))))))
+
+
+
+
+
