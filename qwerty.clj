@@ -223,6 +223,9 @@
 (defmethod return-count-seq 'qwerty/goto [_]
   [1])
 
+(defmethod return-count-seq 'qwerty/cast [_]
+  [1])
+
 (defmethod return-count-seq 'qwerty/go-method-call [_]
   [1])
 
@@ -397,7 +400,7 @@
   (if (coll? v)
     (let [o (gensym 'o)]
       `(qwerty/let* ((~o ~(lower v)))
-                    (qwerty/.- ~o f)))
+                    (qwerty/.- ~o ~f)))
     `(qwerty/.- ~v ~f)))
 
 (defmethod lower-seq 'qwerty/struct [expr]
@@ -468,7 +471,7 @@
            result (gensym 'result)]
        (lower
         `(qwerty/let* (~@(remove #(= (first %) (second %)) bindings)
-                       (~result ~(map first bindings)))
+                       (~result (lower ~(map first bindings))))
                       (qwerty/set! f ~result))))
      ;; :else
      ;; (let [ff (gensym 'f)]
@@ -925,10 +928,14 @@
       (println))
     (do
       (swap! global-env conj thing)
+      (println "/* set!" thing value "*/")
       (print "var ")
       (binding [*context* :statement]
         (go thing))
-      (print " interface{} ")
+      (if (and (seq? value)
+               (= (first value) 'qwerty/cast))
+        (print "" (second value) "")
+        (print " interface{} "))
       (print " = ")
       (binding [*context* :statement]
         (go value))
@@ -1036,7 +1043,7 @@
   (println "/*" (apply print-str args) "*/"))
 
 (defmethod go-seq 'qwerty/local [[_ n type]]
-  (println "/* qwerty/local */")
+  (println "/* qwerty/local" n type "*/")
   (swap! info assoc n (if (= 'interface type)
                         "interface{}"
                         type))
@@ -1231,8 +1238,8 @@
            (println "import " (pr-str (second form)))
            :else (let [m (f (lower (α-convert form {})))]
                    #_(binding [*out* *err*]
-                       (pprint m)
-                       (println))
+                     (pprint m)
+                     (println))
                    (go m)))
           (println)
           (recur (read *in* false eof))))
