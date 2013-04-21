@@ -19,3 +19,12 @@
                               (qwerty/let* ((foo (qwerty/cast *ACons c)))
                                            (qwerty/.- foo cdr))))
 
+(qwerty/godef iadd (qwerty/fn* (x y)
+                               (qwerty/let* ((a (qwerty/cast int x))
+                                             (b (qwerty/cast int y)))
+                                            (qwerty/+ a b))))
+
+(qwerty/godef ListCount (qwerty/fn* (lst)
+                                    (qwerty/if (qwerty/nil? lst)
+                                      0
+                                      (iadd 1 (Cdr lst)))))

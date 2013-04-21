@@ -6,11 +6,16 @@
 
 (declare ^:dynamic *context*)
 (declare ^:dynamic *scope*)
+(declare ^:dynamic *package*)
 
 (load-file "./expand.clj")
 (load-file "./alpha.clj")
 (load-file "./free.clj")
 
+(defn fn-interface []
+  (if (= *package* 'qwerty)
+    "IFn"
+    "qwerty.IFn"))
 
 ;; close-over
 
@@ -469,7 +474,7 @@
    (every? (complement coll?) application)
    (let [f (gensym 'f)]
      (lower
-      `(qwerty/let* ((~f (qwerty/cast ~'qwerty.IFn ~(first application))))
+      `(qwerty/let* ((~f (qwerty/cast ~(fn-interface) ~(first application))))
                     (qwerty/results
                      ~values
                      (qwerty/go-method-call ~f ~(symbol (str "Invoke" (count (rest application)) "_"
@@ -637,7 +642,7 @@
                              (qwerty/comment "line" ~(:line (meta form)))
                              ~(lower (map first bindings))))))
     (let [f (gensym 'f)]
-      (lower `(qwerty/let* ((~f (qwerty/cast ~'qwerty.IFn ~(first form))))
+      (lower `(qwerty/let* ((~f (qwerty/cast ~(fn-interface) ~(first form))))
                            (qwerty/do
                              (qwerty/comment "line" ~(:line (meta form)))
                              (qwerty/go-method-call ~f ~(symbol (str "Invoke" (count (rest form)) "_1"))
@@ -942,7 +947,7 @@
         (println)))))
 
 (defmethod go-seq 'qwerty/go [[_  fun]]
-  (println "go" (str "(" fun ".(qwerty.IFn)).Invoke0_1()")))
+  (println "go" (str "(" fun ".(" (fn-interface) ")).Invoke0_1()")))
 
 (defmethod go-seq 'qwerty/test [[_ condition label]]
   (println "if" (str "!(" condition ".(bool))") "{ goto" (str "L" label) "}"))
@@ -1128,17 +1133,20 @@
       (recur nf))))
 
 (let [eof (Object.)]
-  (loop [form (read *in* false eof)]
-    (when-not (= eof form)
-      (cond
-       (and (seq? form) (= (first form) 'qwerty/package))
-       (println "package " (second form))
-       (and (seq? form) (= (first form) 'qwerty/import))
-       (println "import " (pr-str (second form)))
-       :else (let [m (f (lower (α-convert form {})))]
-               #_(binding [*out* *err*]
-                 (pprint m)
-                 (println))
-               (go m)))
-      (println)
-      (recur (read *in* false eof)))))
+  (binding [*package* nil]
+    (loop [form (read *in* false eof)]
+      (when-not (= eof form)
+        (cond
+         (and (seq? form) (= (first form) 'qwerty/package))
+         (do
+           (set! *package* (second form))
+           (println "package " (second form)))
+         (and (seq? form) (= (first form) 'qwerty/import))
+         (println "import " (pr-str (second form)))
+         :else (let [m (f (lower (α-convert form {})))]
+                 #_(binding [*out* *err*]
+                     (pprint m)
+                     (println))
+                 (go m)))
+        (println)
+        (recur (read *in* false eof))))))
