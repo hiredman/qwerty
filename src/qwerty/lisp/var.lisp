@@ -36,3 +36,18 @@
                (qwerty/do
                  (qwerty/set! (qwerty/.- v value) value)
                  v)))
+(qwerty/godef string_concat (qwerty/fn* (x y)
+                                        (qwerty/let* ((a (qwerty/cast string x))
+                                                      (b (qwerty/cast string y)))
+                                                     (qwerty/+ a b))))
+
+(qwerty/defgomethod String AVar (s) (r)
+  (() (string))
+  (qwerty/cast string
+               (string_concat
+                (string_concat
+                 "(qwerty/var "
+                 (qwerty/.- s name))
+                ")")))
+
+

@@ -713,6 +713,7 @@
   (go-seq s))
 
 (defmethod go java.lang.String [s]
+  (println "/* string */")
   (if (= :return *context*)
     (print "return"))
   (print " ")
@@ -953,7 +954,8 @@
 (defmethod go-seq 'qwerty/cast [[_ t n]]
   (if (= :return *context*)
     (print "return"))
-  (go n)
+  (binding [*context* :statement]
+    (go n))
   (print ".(" t ")")
   (if (= :return *context*)
     (println)))

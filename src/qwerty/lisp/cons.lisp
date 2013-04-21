@@ -33,15 +33,17 @@
                                       0
                                       (iadd 1 (Cdr lst)))))
 
-(qwerty/godef mapV (Var (Symbol "qwerty/map")))
+(qwerty/godef deref (qwerty/fn* (v) (qwerty/go-method-call (qwerty/cast *AVar v) Deref)))
 
+;; example of what qwerty/def should expand in to
 (qwerty/godef _
               (qwerty/. InternVar (Symbol "qwerty/map")
-                        (qwerty/fn* (f lst)
-                                    (qwerty/if (qwerty/nil? lst)
-                                      nil
-                                      (Cons (f (Car lst))
-                                            ((qwerty/go-method-call (qwerty/cast *AVar mapV) Deref) f (Cdr lst)))))))
+                        (qwerty/let* ((mapV (Var (Symbol "qwerty/map"))))
+                                     (qwerty/fn* (f lst)
+                                                 (qwerty/if (qwerty/nil? lst)
+                                                            nil
+                                                            (Cons (f (Car lst))
+                                                                  ((deref mapV) f (Cdr lst))))))))
 
 
 

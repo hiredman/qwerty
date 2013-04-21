@@ -163,5 +163,6 @@
   (qwerty/do
     (qwerty/. test2)
     (qwerty/. test1)
-    (qwerty/. test3)
-    ))
+    (println "Printing Var")
+    (println (qwerty.Var (qwerty.Symbol "qwerty/map")))
+    (qwerty/. test3)))
