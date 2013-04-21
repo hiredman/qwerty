@@ -12,12 +12,16 @@
                                               c))))
 
 (qwerty/godef Car (qwerty/fn* (c)
-                              (qwerty/let* ((foo (qwerty/cast *ACons c)))
-                                           (qwerty/.- foo car))))
+                              (qwerty/if (qwerty/nil? c)
+                                nil
+                                (qwerty/let* ((foo (qwerty/cast *ACons c)))
+                                             (qwerty/.- foo car)))))
 
 (qwerty/godef Cdr (qwerty/fn* (c)
-                              (qwerty/let* ((foo (qwerty/cast *ACons c)))
-                                           (qwerty/.- foo cdr))))
+                              (qwerty/if (qwerty/nil? c)
+                                nil
+                                (qwerty/let* ((foo (qwerty/cast *ACons c)))
+                                             (qwerty/.- foo cdr)))))
 
 (qwerty/godef iadd (qwerty/fn* (x y)
                                (qwerty/let* ((a (qwerty/cast int x))
