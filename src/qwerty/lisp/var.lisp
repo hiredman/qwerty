@@ -7,13 +7,9 @@
 
 (qwerty/godef the_vars (qwerty/make "map[string]*AVar"))
 
-(qwerty/defgomethod DerefMethod *AVar (the_var) (r)
+(qwerty/defgomethod Deref *AVar (the_var) (r)
   ((interface) (interface))
   (qwerty/.- the_var value))
-
-(qwerty/godef Deref (qwerty/fn* (v)
-                                (qwerty/let* ((v (qwerty/cast *AVar v)))
-                                             (qwerty/go-method-call v DerefMethod))))
 
 (qwerty/defgofun Var (name)
   ((interface) (interface))

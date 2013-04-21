@@ -460,6 +460,16 @@
      (= 'qwerty/do (first lv))
      `(qwerty/do ~@(rest (butlast lv))
                  ~(lower `(qwerty/set! ~f ~(lower (last lv)))))
+     :else
+     (let [bindings (for [x lv]
+                      (if (symbol? x)
+                        (list x x)
+                        (list (gensym 'arg) (lower x))))
+           result (gensym 'result)]
+       (lower
+        `(qwerty/let* (~@(remove #(= (first %) (second %)) bindings)
+                       (~result ~(map first bindings)))
+                      (qwerty/set! f ~result))))
      ;; :else
      ;; (let [ff (gensym 'f)]
      ;;   (lower `(qwerty/let* ((~ff ~(lower lv)))
@@ -885,7 +895,9 @@
 (defmethod go-seq 'qwerty/go-method-call [[_ target method & args]]
   (if (= :return *context*)
     (print "return"))
-  (print " " (str (munge target) "." method) "(")
+  (binding [*context* :statement]
+    (go target))
+  (print (str "." method "("))
   (binding [*context* :statement]
     (doseq [v args]
       (go v)
