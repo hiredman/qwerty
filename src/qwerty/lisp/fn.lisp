@@ -27,4 +27,14 @@
   (Invoke4_3 (a1 a2 a3 a4) (result1 result2 result3))
   (Invoke4_4 (a1 a2 a3 a4) (result1 result2 result3 result4))
 
+  (Invoke5_1 (a1 a2 a3 a4 a5) (result1))
+  (Invoke5_2 (a1 a2 a3 a4 a5) (result1 result2))
+  (Invoke5_3 (a1 a2 a3 a4 a5) (result1 result2 result3))
+  (Invoke5_4 (a1 a2 a3 a4 a5) (result1 result2 result3 result4))
+
+  (Invoke6_1 (a1 a2 a3 a4 a5 a6) (result1))
+  (Invoke6_2 (a1 a2 a3 a4 a5 a6) (result1 result2))
+  (Invoke6_3 (a1 a2 a3 a4 a5 a6) (result1 result2 result3))
+  (Invoke6_4 (a1 a2 a3 a4 a5 a6) (result1 result2 result3 result4))
+
   )
