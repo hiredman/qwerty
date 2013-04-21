@@ -54,6 +54,7 @@
 (defmethod free-seq 'qwerty/go-method-call [exp env] [exp env])
 (defmethod free-seq 'qwerty/fn* [[_ args body :as exp] env]
   [exp (update-in env [:bound] into args)])
+(defmethod free-seq 'qwerty/map-update [exp env] [exp env])
 
 (defn free-variables [exp]
   (:free (second (expand exp {:free #{}

@@ -214,6 +214,12 @@
   (assert (= 2 (count new-children)))
   `(qwerty/= ~@new-children))
 
+(defmethod children-of-seq 'qwerty/map-update [[_ & args]]
+  args)
+(defmethod make-seq 'qwerty/map-update [_ new-children]
+  (assert (= 3 (count new-children)))
+  `(qwerty/map-update ~@new-children))
+
 (defmethod children-of-seq :default [exp]
   (assert (not (and (symbol? (first exp))
                     (= "qwerty" (namespace (first exp)))))

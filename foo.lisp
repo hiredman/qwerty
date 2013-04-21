@@ -4,11 +4,6 @@
 (qwerty/import "io")
 (qwerty/import "bufio")
 
-(qwerty/struct Var
-               name string
-               value interface
-               macro bool)
-
 (qwerty/definterface ISeq
   (first () (r))
   (rest () (r)))
@@ -19,26 +14,11 @@
 
 (qwerty/godef identity (qwerty/fn* (x) x))
 
-(qwerty/godef the_vars (qwerty/make "map[string]Var"))
-
 (qwerty/godef println
               (qwerty/fn* (x)
                           (qwerty/do
                             (qwerty/. fmt.Println x)
                             nil)))
-
-(qwerty/godef make_var (qwerty/fn* (name value)
-                                   (qwerty/let* ((n (qwerty/cast string name))
-                                                 (m (qwerty/cast "map[string]Var" the_vars)))
-                                                (qwerty/results (value found) (qwerty/map-entry m n)
-                                                                (println
-                                                                 (qwerty/if found
-                                                                   (println value)
-                                                                   (qwerty/if (qwerty/nil? nil)
-                                                                     (println "it is nil!")
-                                                                     (println "not-found"))))))))
-
-
 
 (qwerty/godef iadd (qwerty/fn* (x y)
                                (qwerty/let* ((a (qwerty/cast int x))
@@ -108,8 +88,7 @@
                                                        (qwerty/do
                                                          (println m)))))
                    (qwerty/go-> ("Hello" ch)
-                                (println "sent"))))
-    (make_var "foo" 1)))
+                                (println "sent"))))))
 
 (qwerty/godef open (qwerty/fn* (file_name)
                                (qwerty/let* ((fn (qwerty/cast string file_name)))
@@ -129,11 +108,15 @@
                                   (qwerty/. panic err)
                                   nil)))
 
+(qwerty/set! foo (qwerty/. qwerty.InternVar "foo" "Hello Var World"))
+
 (qwerty/defgofun main ()
   (())
   (qwerty/do
     (qwerty/. test2)
     (qwerty/. test1)
+    (println (qwerty.Deref (qwerty/. qwerty.Var "foo")))
+    (println (qwerty.Deref foo))
     (qwerty/let* ((readd (qwerty/fn*
                           (read read_list)
                           (qwerty/let*
@@ -167,3 +150,5 @@
                   (fd (open "./foo.lisp"))
                   (rdr (reader fd)))
                  (println (read rdr)))))
+
+

@@ -2,7 +2,8 @@
 
 (require '[clojure.walk :as w]
          '[clojure.pprint :refer [pprint]]
-         '[clojure.set :as s])
+         '[clojure.set :as s]
+         '[clojure.java.io :as io])
 
 (defn gensym [s]
   (clojure.core/gensym (symbol (str s (mod (System/currentTimeMillis) 10000)))))
@@ -10,6 +11,8 @@
 (declare ^:dynamic *context*)
 (declare ^:dynamic *scope*)
 (declare ^:dynamic *package*)
+
+(def global-env (atom #{}))
 
 (load-file "./expand.clj")
 (load-file "./alpha.clj")
@@ -149,6 +152,11 @@
 (defmethod close-over-seq 'qwerty/defgofun [exp variables this-name]
   exp)
 
+(defmethod close-over-seq 'qwerty/map-update [[_ map key value] variables this-name]
+  `(qwerty/map-update ~(close-over map variables this-name)
+                      ~(close-over key variables this-name)
+                      ~(close-over value variables this-name)))
+
 (defmethod close-over-seq :default [form variables this-name]
   (assert (not (and (symbol? (first form))
                     (= "qwerty" (namespace (first form)))))
@@ -216,6 +224,9 @@
   [1])
 
 (defmethod return-count-seq 'qwerty/go-method-call [_]
+  [1])
+
+(defmethod return-count-seq 'qwerty/map-update [_]
   [1])
 
 (defmethod return-count-seq :default [x]
@@ -619,6 +630,17 @@
        `(qwerty/let* ((~go ~(lower fun)))
                      (qwerty/go ~go))))))
 
+(defmethod lower-seq 'qwerty/map-update [[_ & args]]
+  (if (every? symbol? args)
+    `(qwerty/map-update ~@args)
+    (let [bindings (for [a args]
+                     (if (symbol? a)
+                       (list a a)
+                       (list (gensym 'arg) (lower a))))]
+      (lower
+       `(qwerty/let* ~(remove #(= (first %) (second %)) bindings)
+                     (qwerty/map-update ~@(map first bindings)))))))
+
 (defmethod lower-seq 'qwerty/= [[_ a b]]
   (cond
    (and (symbol? a)
@@ -876,6 +898,7 @@
         (go value))
       (println))
     (do
+      (swap! global-env conj thing)
       (print "var ")
       (binding [*context* :statement]
         (go thing))
@@ -999,6 +1022,16 @@
 (defmethod go-seq 'qwerty/nil? [[_ v]]
   (print "/* qwerty/nil? */")
   (println "(" v "== nil" ")"))
+
+(defmethod go-seq 'qwerty/map-update [[_ map key value]]
+  (binding [*context* :statement]
+    (print "/* qwerty/nil? */")
+    (go map)
+    (print "[")
+    (go key)
+    (print "] =")
+    (go value)
+    (println)))
 
 (defmulti raise-decls type)
 
@@ -1133,6 +1166,7 @@
 (defmethod raise-locals-seq 'qwerty/go [exp env] [exp env])
 (defmethod raise-locals-seq 'qwerty/= [exp env] [exp env])
 (defmethod raise-locals-seq 'qwerty/let* [exp env] [exp env])
+(defmethod raise-locals-seq 'qwerty/map-update [exp env] [exp env])
 
 (defn raise-locals-out-of-labels [form seen]
   (first (expand form seen raise-locals)))
@@ -1146,23 +1180,38 @@
       form
       (recur nf))))
 
+(try
+  (let [eof (Object.)]
+    (with-open [i (io/reader "compilation-env")]
+      (loop [name (read i false eof)]
+        (when-not (= eof name)
+          (swap! global-env conj name)
+          (recur (read *in* false eof))))))
+  (catch Exception _))
+
 (let [eof (Object.)]
   (binding [*package* nil]
-    (loop [form (read *in* false eof)]
-      (when-not (= eof form)
-        (cond
-         (and (seq? form) (= (first form) 'qwerty/package))
-         (do
-           (set! *package* (second form))
-           (println "package " (second form))
-           (when (not= *package* 'qwerty)
-             (println "import " (pr-str "qwerty/lisp"))))
-         (and (seq? form) (= (first form) 'qwerty/import))
-         (println "import " (pr-str (second form)))
-         :else (let [m (f (lower (α-convert form {})))]
-                 #_(binding [*out* *err*]
-                     (pprint m)
-                     (println))
-                 (go m)))
-        (println)
-        (recur (read *in* false eof))))))
+    (try
+      (loop [form (read *in* false eof)]
+        (when-not (= eof form)
+          (cond
+           (and (seq? form) (= (first form) 'qwerty/package))
+           (do
+             (set! *package* (second form))
+             (println "package " (second form))
+             (when (not= *package* 'qwerty)
+               (println "import " (pr-str "qwerty/lisp"))))
+           (and (seq? form) (= (first form) 'qwerty/import))
+           (println "import " (pr-str (second form)))
+           :else (let [m (f (lower (α-convert form {})))]
+                   #_(binding [*out* *err*]
+                       (pprint m)
+                       (println))
+                   (go m)))
+          (println)
+          (recur (read *in* false eof))))
+      (finally
+        (with-open [o (io/writer "compilation-env")]
+          (binding [*out* o]
+            (doseq [e @global-env]
+              (println e))))))))

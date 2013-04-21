@@ -47,7 +47,7 @@
 (defmethod α-convert-seq 'qwerty/defgomethod [[_ method-name type-name args returns body] env]
   (let [new-env (for [a args]
                   [a (gensym a)])]
-    `(qwerty/defgomethod ~method-name ~type-name ~(map first new-env) ~returns
+    `(qwerty/defgomethod ~method-name ~type-name ~(map second new-env) ~returns
        ~(α-convert body (into env new-env)))))
 
 (defmethod α-convert-seq 'qwerty/fn* [[_ args body] env]
@@ -123,6 +123,11 @@
 (defmethod α-convert-seq 'qwerty/map-entry [[_ map key] env]
   `(qwerty/map-entry ~(α-convert map env)
                      ~(α-convert key env)))
+
+(defmethod α-convert-seq 'qwerty/map-update [[_ map key value] env]
+  `(qwerty/map-update ~(α-convert map env)
+                      ~(α-convert key env)
+                      ~(α-convert value env)))
 
 (defmethod α-convert-seq 'qwerty/go [[_ fun] env]
   `(qwerty/go ~(α-convert fun env)))
