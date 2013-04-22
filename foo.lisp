@@ -109,13 +109,16 @@
                                (qwerty/fn* (err)
                                            (qwerty/do
                                              (qwerty/. panic err)
-                                                     nil))))
+                                             nil))))
 
 (qwerty/godef foo (qwerty/. qwerty.InternVar_ (qwerty/. qwerty.Symbol_ "foo") "Hello Var World"))
 
 (qwerty/godef deref (qwerty/fn* (v)
                                 (qwerty/let* ((v (qwerty/cast *qwerty.AVar v)))
                                              (qwerty/go-method-call v Deref))))
+
+(println "here1111111")
+(println (deref (qwerty.Var (qwerty/quote qwerty/first))))
 
 (qwerty/defgofun test3 ()
   (())
@@ -161,6 +164,8 @@
 (qwerty/defgofun main ()
   (())
   (qwerty/do
+    (println "main")
+    (println (deref (qwerty.Var (qwerty/quote qwerty/first))))
     (qwerty/. test2)
     (qwerty/. test1)
     (println "Printing Var")
@@ -170,7 +175,5 @@
     (println (qwerty.PrStr (qwerty/quote foo)))
     (println "reduce")
     (println ((deref (qwerty.Var (qwerty.Symbol "qwerty/fold")))
-               iadd 0 (qwerty/quote (1 2 3 4 5))))
+              iadd 0 (qwerty/quote (1 2 3 4 5))))
     (qwerty/. test3)))
-
-

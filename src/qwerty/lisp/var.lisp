@@ -13,16 +13,20 @@
 
 (qwerty/defgofun Var_ (name)
   ((interface) (interface))
-  (qwerty/let* ((n (qwerty/cast *ASymbol name))
-                (n (qwerty/cast string (qwerty/.- n name))))
-               (qwerty/results (value found) (qwerty/map-entry the_vars n)
-                               (qwerty/if found
-                                 value
-                                 (qwerty/let* ((v (qwerty/new AVar)))
-                                              (qwerty/do
-                                                (qwerty/set! (qwerty/.- v name) n)
-                                                (qwerty/map-update the_vars n v)
-                                                v))))))
+  (qwerty/do
+    (qwerty/let* ((n (qwerty/cast *ASymbol name))
+                  (n (qwerty/cast string (qwerty/.- n name))))
+                 (qwerty/do
+                   (qwerty/results (value found) (qwerty/map-entry the_vars n)
+                                   (qwerty/do
+                                     (qwerty/if found
+                                       (qwerty/do
+                                         value)
+                                       (qwerty/let* ((v (qwerty/new AVar)))
+                                                    (qwerty/do
+                                                      (qwerty/set! (qwerty/.- v name) n)
+                                                      (qwerty/map-update the_vars n v)
+                                                      v)))))))))
 
 (qwerty/godef Var (qwerty/fn* (name) (qwerty/. Var_ name)))
 
@@ -35,16 +39,17 @@
 
 (qwerty/godef InternVar (qwerty/fn* (name value) (qwerty/. InternVar_ name value)))
 
-(qwerty/godef string_concat (qwerty/fn* (x y)
-                                        (qwerty/let* ((a (qwerty/cast string x))
-                                                      (b (qwerty/cast string y)))
-                                                     (qwerty/+ a b))))
+(qwerty/defgofun string_concat (x y)
+  ((interface interface) (interface))
+  (qwerty/let* ((a (qwerty/cast string x))
+                (b (qwerty/cast string y)))
+               (qwerty/+ a b)))
 
 (qwerty/defgomethod String AVar (s) (r)
   (() (string))
   (qwerty/cast string
-               (string_concat
-                (string_concat
-                 "(qwerty/var "
-                 (qwerty/.- s name))
+               (qwerty/. string_concat
+                (qwerty/. string_concat
+                          "(qwerty/var "
+                          (qwerty/.- s name))
                 ")")))

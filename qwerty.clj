@@ -1117,7 +1117,7 @@
 (defmethod go-seq 'qwerty/godef [[_ n v]]
   (assert  (and (seq? v)
                 (= 'qwerty/make (first v)))
-          (pr-str n v))
+           (pr-str n v))
   (print "var" n (second v) "=")
   (go v)
   (println))
@@ -1301,10 +1301,11 @@
                                       (= 'qwerty/make (first (last %))))) exprs)]
       `(qwerty/do
          ~@decls
-         (qwerty/defgofun ~'init ()
-           (())
-           (qwerty/do
-             ~@effects))))
+         ~@(when (seq effects)
+             [`(qwerty/defgofun ~'init ()
+                 (())
+                 (qwerty/do
+                   ~@effects))])))
     `(~op ~@exprs)))
 
 (try
@@ -1317,28 +1318,33 @@
   (catch Exception _))
 
 (let [eof (Object.)]
-  (binding [*package* nil]
-    (try
-      (loop [form (read *in* false eof)]
-        (when-not (= eof form)
-          (cond
-           (and (seq? form) (= (first form) 'qwerty/package))
-           (do
-             (set! *package* (second form))
-             (println "package " (second form))
-             (when (not= *package* 'qwerty)
-               (println "import " (pr-str "qwerty/lisp"))))
-           (and (seq? form) (= (first form) 'qwerty/import))
-           (println "import " (pr-str (str (second form))))
-           :else (let [m (top-level-init (f (lower (α-convert form {}))))]
-                   #_(binding [*out* *err*]
-                       (pprint m)
-                       (println))
-                   (go m)))
-          (println)
-          (recur (read *in* false eof))))
-      (finally
-        (with-open [o (io/writer "compilation-env")]
-          (binding [*out* o]
-            (doseq [e @global-env]
-              (println e))))))))
+  (with-open [ir (if (System/getenv "IR")
+                   (io/writer "ir.lisp")
+                   (io/writer "/dev/null"))]
+    (binding [*package* nil]
+      (try
+        (loop [form (read *in* false eof)]
+          (when-not (= eof form)
+            (cond
+             (and (seq? form) (= (first form) 'qwerty/package))
+             (do
+               (set! *package* (second form))
+               (println "package " (second form))
+               (when (not= *package* 'qwerty)
+                 (println "import " (pr-str "qwerty/lisp"))))
+             (and (seq? form) (= (first form) 'qwerty/import))
+             (println "import " (pr-str (str (second form))))
+             :else (let [m (top-level-init (f (lower (α-convert form {}))))]
+                     (when (System/getenv "IR")
+                       (binding [*out* ir]
+                         (pprint m)
+                         (println)
+                         (println)))
+                     (go m)))
+            (println)
+            (recur (read *in* false eof))))
+        (finally
+          (with-open [o (io/writer "compilation-env")]
+            (binding [*out* o]
+              (doseq [e @global-env]
+                (println e)))))))))

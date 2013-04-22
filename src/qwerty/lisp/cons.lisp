@@ -47,7 +47,7 @@
 
 (qwerty/let* ((mapV (qwerty/. Var_ (symbol "qwerty/map"))))
              (qwerty/do
-               (qwerty/. fmt.Println "static init cons")
+              (qwerty/. fmt.Println "static init cons")
                (intern_var (symbol "qwerty/map")
                            (qwerty/fn* (f lst)
                                        (qwerty/if (qwerty/nil? lst)
