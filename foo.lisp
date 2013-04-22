@@ -159,6 +159,11 @@
                   (rdr (reader fd)))
                  (println (read rdr)))))
 
+(qwerty/defgofun init ()
+  (())
+  (qwerty/do
+    (println "foo")))
+
 (qwerty/defgofun main ()
   (())
   (qwerty/do
@@ -167,4 +172,11 @@
     (println "Printing Var")
     (println (qwerty.Var (qwerty.Symbol "qwerty/map")))
     (println (qwerty.Car (qwerty/quote ("first of list" "second of list"))))
+    (println "PrStr")
+    (println (qwerty.PrStr (qwerty/quote foo)))
+    (println "reduce")
+    (println ((deref (qwerty.Var (qwerty.Symbol "qwerty/fold")))
+               iadd 0 (qwerty/quote (1 2 3 4 5))))
     (qwerty/. test3)))
+
+

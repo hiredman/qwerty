@@ -710,8 +710,8 @@
   (cond
    (symbol? v)
    (if (= *package* 'qwerty)
-     `(Symbol ~(str v))
-     `(qwerty.Symbol ~(str v)))
+     `(~'Symbol ~(str v))
+     `(~'qwerty.Symbol ~(str v)))
    (seq? v)
    (if (= *package* 'qwerty)
      (let [bindings (for [item v]
@@ -730,6 +730,8 @@
                         (fn [tail [el _]]
                           `(qwerty.Cons ~el ~tail))
                         nil (reverse bindings))))))
+   (number? v)
+   v
    (or (nil? v) (empty? v))
    nil
    (string? v)
@@ -1293,8 +1295,8 @@
            (println "import " (pr-str (str (second form))))
            :else (let [m (f (lower (α-convert form {})))]
                    #_(binding [*out* *err*]
-                       (pprint m)
-                       (println))
+                     (pprint m)
+                     (println))
                    (go m)))
           (println)
           (recur (read *in* false eof))))

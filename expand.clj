@@ -220,6 +220,11 @@
   (assert (= 3 (count new-children)))
   `(qwerty/map-update ~@new-children))
 
+(defmethod children-of-seq 'qwerty/quote [_] ())
+(defmethod make-seq 'qwerty/quote [exp new-children]
+  (assert (zero? (count new-children)))
+  exp)
+
 (defmethod children-of-seq :default [exp]
   (assert (not (and (symbol? (first exp))
                     (= "qwerty" (namespace (first exp)))))

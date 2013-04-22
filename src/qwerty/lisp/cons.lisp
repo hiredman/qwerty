@@ -42,11 +42,27 @@
 (qwerty/godef deref (qwerty/fn* (v) (qwerty/go-method-call (qwerty/cast *AVar v) Deref)))
 
 ;; example of what qwerty/def should expand in to
-(qwerty/godef _
-              (InternVar (Symbol "qwerty/map")
-                         (qwerty/let* ((mapV (Var (Symbol "qwerty/map"))))
-                                      (qwerty/fn* (f lst)
-                                                  (qwerty/if (qwerty/nil? lst)
-                                                    nil
-                                                    (Cons (f (Car lst))
-                                                          ((deref mapV) f (Cdr lst))))))))
+(qwerty/defgofun init ()
+  (())
+  (qwerty/let* ((mapV (Var (Symbol "qwerty/map"))))
+               (qwerty/do
+                 (InternVar (Symbol "qwerty/map")
+                            (qwerty/fn* (f lst)
+                                        (qwerty/if (qwerty/nil? lst)
+                                          nil
+                                          (Cons (f (Car lst))
+                                                ((deref mapV) f (Cdr lst))))))
+                 (InternVar (Symbol "qwerty/fold")
+                            (qwerty/fn* (f init lst)
+                                        (qwerty/do
+                                          (qwerty/labels
+                                           start
+                                           (qwerty/test (qwerty/nil? lst) reduce)
+                                           (qwerty/goto end)
+                                           reduce
+                                           (qwerty/do
+                                             (qwerty/set! init (f init (Car lst)))
+                                             (qwerty/set! lst (Cdr lst))
+                                             (qwerty/goto start))
+                                           end)
+                                          init))))))
