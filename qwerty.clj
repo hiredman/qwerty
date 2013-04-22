@@ -5,6 +5,8 @@
          '[clojure.set :as s]
          '[clojure.java.io :as io])
 
+(ns-unmap *ns* 'gensym)
+
 (defn gensym [s]
   (clojure.core/gensym (symbol (str s (mod (System/currentTimeMillis) 10000)))))
 
