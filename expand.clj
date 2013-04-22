@@ -225,6 +225,11 @@
   (assert (zero? (count new-children)))
   exp)
 
+(defmethod children-of-seq 'qwerty/godef [[_ _ v]] (list v))
+(defmethod make-seq 'qwerty/godef [[_ n _] new-children]
+  (assert (= 1 (count new-children)))
+  `(qwerty/godef ~n ~@new-children))
+
 (defmethod children-of-seq :default [exp]
   (assert (not (and (symbol? (first exp))
                     (= "qwerty" (namespace (first exp)))))

@@ -12,8 +12,7 @@
 
 (qwerty/defgofun init ()
   (())
-  (qwerty/let* ((k (qwerty/cast string (Type (qwerty/quote foo))))
-                (pr_dispatch (qwerty/cast "map[string]interface{}" pr_dispatch)))
+  (qwerty/let* ((k (qwerty/cast string (Type (qwerty/quote foo)))))
                (qwerty/map-update pr_dispatch k
                                   (qwerty/fn* (exp) (qwerty/go-method-call (qwerty/cast *ASymbol exp) String)))
                nil))

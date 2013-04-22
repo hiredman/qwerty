@@ -486,6 +486,11 @@
      (= 'qwerty/do (first lv))
      `(qwerty/do ~@(rest (butlast lv))
                  ~(lower `(qwerty/set! ~f ~(lower (last lv)))))
+     (= 'qwerty/set! (first lv))
+     (lower
+      `(qwerty/do
+         ~(lower lv)
+         (qwerty/set! ~f nil)))
      :else
      (let [bindings (for [x lv]
                       (if (symbol? x)
@@ -494,7 +499,7 @@
            result (gensym 'result)]
        (lower
         `(qwerty/let* (~@(remove #(= (first %) (second %)) bindings)
-                       (~result (lower ~(map first bindings))))
+                       (~result ~(lower (map first bindings))))
                       (qwerty/set! f ~result))))
      ;; :else
      ;; (let [ff (gensym 'f)]
@@ -514,12 +519,25 @@
     `(qwerty/+ ~a ~b)))
 
 (defmethod lower-seq 'qwerty/godef [[_ n v]]
-  (if (coll? v)
-    (let [a_ (gensym 'godef)]
-      (lower
-       `(qwerty/let* ((~a_ ~(lower v)))
-                     (qwerty/godef ~n ~a_))))
-    `(qwerty/set! ~n ~v)))
+  (cond
+   (and (seq? v)
+        (= 'qwerty/make (first v)))
+   `(qwerty/godef ~n ~v)
+   (coll? v)
+   (let [a_ (gensym 'godef)]
+     (lower
+      `(qwerty/let* ((~a_ ~(lower v)))
+                    (qwerty/do
+                      (qwerty/local ~n ~'interface)
+                      (qwerty/set! ~n ~a_)))))
+   :else
+   (lower
+    `(qwerty/do
+       (qwerty/local ~n ~(if (and (seq? v)
+                                  (= 'qwerty/cast (first v)))
+                           (second v)
+                           'interface))
+       (qwerty/set! ~n ~(lower v))))))
 
 ;;complicated
 (defmethod lower-seq 'qwerty/results [[_ values application body]]
@@ -710,8 +728,8 @@
   (cond
    (symbol? v)
    (if (= *package* 'qwerty)
-     `(~'Symbol ~(str v))
-     `(~'qwerty.Symbol ~(str v)))
+     `(qwerty/. ~'Symbol_ ~(str v))
+     `(qwerty/. ~'qwerty.Symbol_ ~(str v)))
    (seq? v)
    (if (= *package* 'qwerty)
      (let [bindings (for [item v]
@@ -974,28 +992,12 @@
 
 (defmethod go-seq 'qwerty/set! [[_ thing value]]
   (println "/* qwerty/set!" value "*/")
-  (if (= *scope* :function)
-    (do
-      (binding [*context* :statement]
-        (go thing))
-      (print " = ")
-      (binding [*context* :statement]
-        (go value))
-      (println))
-    (do
-      (swap! global-env conj thing)
-      (println "/* set!" thing value "*/")
-      (print "var ")
-      (binding [*context* :statement]
-        (go thing))
-      (if (and (seq? value)
-               (= (first value) 'qwerty/cast))
-        (print "" (second value) "")
-        (print " interface{} "))
-      (print " = ")
-      (binding [*context* :statement]
-        (go value))
-      (println))))
+  (binding [*context* :statement]
+    (go thing))
+  (print " = ")
+  (binding [*context* :statement]
+    (go value))
+  (println))
 
 (defmethod go-seq 'qwerty/goderef [[_ thing]]
   (if (= :return *context*)
@@ -1104,14 +1106,22 @@
   (swap! info assoc n (if (= 'interface type)
                         "interface{}"
                         type))
-  (when (= *scope* :function)
-    (println "var" (munge n) (if (= 'interface type)
-                               "interface{}"
-                               type))))
+  (println "var" (munge n) (if (= 'interface type)
+                             "interface{}"
+                             type)))
 
 (defmethod go-seq 'qwerty/nil? [[_ v]]
   (print "/* qwerty/nil? */")
   (println "(" v "== nil" ")"))
+
+(defmethod go-seq 'qwerty/godef [[_ n v]]
+  (assert  (and (seq? v)
+                (= 'qwerty/make (first v)))
+          (pr-str n v))
+  (print "var" n (second v) "=")
+  (go v)
+  (println))
+
 
 (defmethod go-seq 'qwerty/map-update [[_ map key value]]
   (binding [*context* :statement]
@@ -1138,6 +1148,8 @@
            qwerty/type
            qwerty/struct
            qwerty/defgomethod
+           qwerty/definterface
+           qwerty/godef
            } (first form))))
 
 (defmethod raise-decls-seq 'qwerty/defgofun [[_ function-name args types body]]
@@ -1257,6 +1269,7 @@
 (defmethod raise-locals-seq 'qwerty/= [exp env] [exp env])
 (defmethod raise-locals-seq 'qwerty/let* [exp env] [exp env])
 (defmethod raise-locals-seq 'qwerty/map-update [exp env] [exp env])
+(defmethod raise-locals-seq 'qwerty/godef [exp env] [exp env])
 
 (defn raise-locals-out-of-labels [form seen]
   (first (expand form seen raise-locals)))
@@ -1269,6 +1282,30 @@
     (if (= nf form)
       form
       (recur nf))))
+
+(defn top-level-init [[op & exprs]]
+  (if (= 'qwerty/do op)
+    (let [decls (filter #(or (decl? %)
+                             (and (seq? %)
+                                  (= 'qwerty/local (first %)))
+                             #_(and (seq? %)
+                                    (= 'qwerty/set! (first %))
+                                    (seq? (last %))
+                                    (= 'qwerty/make (first (last %))))) exprs)
+          effects (remove #(or (decl? %)
+                               (and (seq? %)
+                                    (= 'qwerty/local (first %)))
+                               #_(and (seq? %)
+                                      (= 'qwerty/set! (first %))
+                                      (seq? (last %))
+                                      (= 'qwerty/make (first (last %))))) exprs)]
+      `(qwerty/do
+         ~@decls
+         (qwerty/defgofun ~'init ()
+           (())
+           (qwerty/do
+             ~@effects))))
+    `(~op ~@exprs)))
 
 (try
   (let [eof (Object.)]
@@ -1293,10 +1330,10 @@
                (println "import " (pr-str "qwerty/lisp"))))
            (and (seq? form) (= (first form) 'qwerty/import))
            (println "import " (pr-str (str (second form))))
-           :else (let [m (f (lower (α-convert form {})))]
+           :else (let [m (top-level-init (f (lower (α-convert form {}))))]
                    #_(binding [*out* *err*]
-                     (pprint m)
-                     (println))
+                       (pprint m)
+                       (println))
                    (go m)))
           (println)
           (recur (read *in* false eof))))

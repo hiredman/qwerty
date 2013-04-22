@@ -103,15 +103,15 @@
                                  (qwerty/let* ((fd (qwerty/cast io.Reader fd)))
                                               (qwerty/. bufio.NewReader fd))))
 
-(qwerty/godef raiseS (qwerty.Symbol "raise"))
+(qwerty/godef raiseS (qwerty/. qwerty.Symbol_ "raise"))
 
-(qwerty/godef raiseV (qwerty.InternVar raiseS
-                                       (qwerty/fn* (err)
-                                                   (qwerty/do
-                                                     (qwerty/. panic err)
+(qwerty/godef raiseV (qwerty/. qwerty.InternVar_ raiseS
+                               (qwerty/fn* (err)
+                                           (qwerty/do
+                                             (qwerty/. panic err)
                                                      nil))))
 
-(qwerty/godef foo (qwerty.InternVar (qwerty.Symbol "foo") "Hello Var World"))
+(qwerty/godef foo (qwerty/. qwerty.InternVar_ (qwerty/. qwerty.Symbol_ "foo") "Hello Var World"))
 
 (qwerty/godef deref (qwerty/fn* (v)
                                 (qwerty/let* ((v (qwerty/cast *qwerty.AVar v)))
@@ -159,11 +159,6 @@
                   (rdr (reader fd)))
                  (println (read rdr)))))
 
-(qwerty/defgofun init ()
-  (())
-  (qwerty/do
-    (println "foo")))
-
 (qwerty/defgofun main ()
   (())
   (qwerty/do
@@ -175,6 +170,7 @@
     (println "PrStr")
     (println (qwerty.PrStr (qwerty/quote foo)))
     (println "reduce")
+    (println (deref (qwerty.Var (qwerty.Symbol "qwerty/fold"))))
     (println ((deref (qwerty.Var (qwerty.Symbol "qwerty/fold")))
                iadd 0 (qwerty/quote (1 2 3 4 5))))
     (qwerty/. test3)))
