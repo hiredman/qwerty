@@ -1237,7 +1237,7 @@
              (when (not= *package* 'qwerty)
                (println "import " (pr-str "qwerty/lisp"))))
            (and (seq? form) (= (first form) 'qwerty/import))
-           (println "import " (pr-str (second form)))
+           (println "import " (pr-str (str (second form))))
            :else (let [m (f (lower (α-convert form {})))]
                    #_(binding [*out* *err*]
                      (pprint m)

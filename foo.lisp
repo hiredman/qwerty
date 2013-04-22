@@ -1,8 +1,8 @@
 (qwerty/package main)
-(qwerty/import "fmt")
-(qwerty/import "os")
-(qwerty/import "io")
-(qwerty/import "bufio")
+(qwerty/import fmt)
+(qwerty/import os)
+(qwerty/import io)
+(qwerty/import bufio)
 
 (qwerty/definterface ISeq
   (first () (r))
