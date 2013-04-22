@@ -120,6 +120,7 @@
 (qwerty/defgofun test3 ()
   (())
   (qwerty/do
+    (println (deref (qwerty.Var (qwerty/quote a/b))))
     (println (deref (qwerty.Var (qwerty.Symbol "foo"))))
     (println (deref foo))
     (println (qwerty.Symbol "foo/bar"))
@@ -165,4 +166,5 @@
     (qwerty/. test1)
     (println "Printing Var")
     (println (qwerty.Var (qwerty.Symbol "qwerty/map")))
+    (println (qwerty.Car (qwerty/quote ("first of list" "second of list"))))
     (qwerty/. test3)))

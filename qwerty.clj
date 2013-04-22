@@ -706,6 +706,36 @@
                      (~bb ~b))
                     (qwerty/= ~aa ~bb))))))
 
+(defmethod lower-seq 'qwerty/quote [[_ v]]
+  (cond
+   (symbol? v)
+   (if (= *package* 'qwerty)
+     `(Symbol ~(str v))
+     `(qwerty.Symbol ~(str v)))
+   (seq? v)
+   (if (= *package* 'qwerty)
+     (let [bindings (for [item v]
+                      (list (gensym 'quote) (lower `(qwerty/quote ~item))))]
+       (lower
+        `(qwerty/let* ~bindings
+                      ~(reduce
+                        (fn [tail [el _]]
+                          `(Cons ~el ~tail))
+                        nil (reverse bindings)))))
+     (let [bindings (for [item v]
+                      (list (gensym 'quote) (lower `(qwerty/quote ~item))))]
+       (lower
+        `(qwerty/let* ~bindings
+                      ~(reduce
+                        (fn [tail [el _]]
+                          `(qwerty.Cons ~el ~tail))
+                        nil (reverse bindings))))))
+   (or (nil? v) (empty? v))
+   nil
+   (string? v)
+   v
+   :else (assert false)))
+
 (defmethod lower-seq :default [form]
   (assert (or (coll? (first form))
               (not= "qwerty" (namespace (first form)))) (with-out-str (pprint form)))

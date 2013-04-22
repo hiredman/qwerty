@@ -25,9 +25,9 @@
                                               (qwerty/set! (qwerty/.- c cdr) y)
                                               c))))
 
-(qwerty/godef Car (qwerty/fn* (c) (CarF c)))
+(qwerty/godef Car (qwerty/fn* (c) (qwerty/. CarF c)))
 
-(qwerty/godef Cdr (qwerty/fn* (c) (CdrF c)))
+(qwerty/godef Cdr (qwerty/fn* (c) (qwerty/. CdrF c)))
 
 (qwerty/godef iadd (qwerty/fn* (x y)
                                (qwerty/let* ((a (qwerty/cast int x))
@@ -50,4 +50,3 @@
                                                     nil
                                                     (Cons (f (Car lst))
                                                           ((deref mapV) f (Cdr lst))))))))
-

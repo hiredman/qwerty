@@ -146,6 +146,8 @@
                  ~(α-convert channel env))
                 ~(α-convert body env)))
 
+(defmethod α-convert-seq 'qwerty/quote [exp env] exp)
+
 (defmethod α-convert-seq 'qwerty/go<- [[_ [result channel] body] env]
   (if (coll? result)
     (let [[n ok] result
