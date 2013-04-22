@@ -299,17 +299,38 @@
                       ~@(doall (for [v free-in-body
                                      i [v 'interface]]
                                  i)))
-       ;; ~@(for [return-count (range 1 (inc max-returns))
-       ;;         :let [apply-name (symbol (str "Apply" return-count))
-       ;;               values (repeatedly return-count #(gensym 'values))
-       ;;               passed-args (take  args)
-       ;;               args (gensym 'args)
-       ;;               function-name (symbol (str "Invoke" (count args) "_" return-count))
-       ;;               spread-args (repeatedly (count args) #(gensym 'values))]]
-       ;;     `(qwerty/defgomethod ~apply-name ~struct-pointer (~args)
-       ;;        ~(repeatedly return-count #(gensym 'r))
-       ;;        (qwerty/results ~values (go-method-call ~this-name ~function-name)
-       ;;         )))
+       ~@(for [return-count (range 1 (inc max-returns))
+               :let [apply-name (symbol (str "Apply" return-count))
+                     values (repeatedly return-count #(gensym 'values))
+                     function-name (symbol (str "Invoke" (count args) "_" return-count))
+                     spread-args (repeatedly (dec (count args)) #(gensym 'values))
+                     last-arg (gensym 'last-arg)
+                     arg-count (count args)
+                     args (gensym 'args)]]
+           `(qwerty/defgomethod ~apply-name ~struct-pointer (~this-name ~args)
+              ~(repeatedly return-count #(gensym 'r))
+              ((~'interface) ~(repeat return-count 'interface))
+              ~(if (zero? arg-count)
+                 (lower
+                  `(qwerty/results ~values (qwerty/go-method-call ~this-name ~function-name)
+                                   (qwerty/values ~@values)))
+                 (lower
+                  `(qwerty/let* ~(let [{:keys [bindings args]} (reduce
+                                                                (fn [{:keys [bindings args]} spread-arg]
+                                                                  {:bindings (conj bindings (list spread-arg
+                                                                                                  (if (= *package* 'qwerty)
+                                                                                                    `(qwerty/. ~'CarF ~args)
+                                                                                                    `(qwerty/. ~'qwerty.CarF ~args))))
+                                                                   :args (if (= *package* 'qwerty)
+                                                                           `(qwerty/. ~'CdrF ~args)
+                                                                           `(qwerty/. ~'qwerty.CdrF ~args))})
+                                                                {:bindings []
+                                                                 :args args}
+                                                                spread-args)]
+                                   (concat bindings
+                                           [(list last-arg args)]))
+                                (qwerty/results ~values (qwerty/go-method-call ~this-name ~function-name ~@spread-args ~last-arg)
+                                                (qwerty/values ~@values)))))))
        ~@(for [arg-count (range 0 (inc max-arity))
                return-count (range 1 (inc max-returns))
                :let [function-name (symbol (str "Invoke" arg-count "_" return-count))
@@ -1242,8 +1263,8 @@
            (println "import " (pr-str (str (second form))))
            :else (let [m (f (lower (α-convert form {})))]
                    #_(binding [*out* *err*]
-                     (pprint m)
-                     (println))
+                       (pprint m)
+                       (println))
                    (go m)))
           (println)
           (recur (read *in* false eof))))

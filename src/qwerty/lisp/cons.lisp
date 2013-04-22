@@ -4,6 +4,20 @@
                car interface
                cdr interface)
 
+(qwerty/defgofun CarF (c)
+  ((interface) (interface))
+  (qwerty/if (qwerty/nil? c)
+    nil
+    (qwerty/let* ((foo (qwerty/cast *ACons c)))
+                 (qwerty/.- foo car))))
+
+(qwerty/defgofun CdrF (c)
+  ((interface) (interface))
+  (qwerty/if (qwerty/nil? c)
+    nil
+    (qwerty/let* ((foo (qwerty/cast *ACons c)))
+                 (qwerty/.- foo cdr))))
+
 (qwerty/godef Cons (qwerty/fn* (x y)
                                (qwerty/let* ((c (qwerty/new ACons)))
                                             (qwerty/do
@@ -11,17 +25,9 @@
                                               (qwerty/set! (qwerty/.- c cdr) y)
                                               c))))
 
-(qwerty/godef Car (qwerty/fn* (c)
-                              (qwerty/if (qwerty/nil? c)
-                                nil
-                                (qwerty/let* ((foo (qwerty/cast *ACons c)))
-                                             (qwerty/.- foo car)))))
+(qwerty/godef Car (qwerty/fn* (c) (CarF c)))
 
-(qwerty/godef Cdr (qwerty/fn* (c)
-                              (qwerty/if (qwerty/nil? c)
-                                nil
-                                (qwerty/let* ((foo (qwerty/cast *ACons c)))
-                                             (qwerty/.- foo cdr)))))
+(qwerty/godef Cdr (qwerty/fn* (c) (CdrF c)))
 
 (qwerty/godef iadd (qwerty/fn* (x y)
                                (qwerty/let* ((a (qwerty/cast int x))
@@ -44,3 +50,4 @@
                                                     nil
                                                     (Cons (f (Car lst))
                                                           ((deref mapV) f (Cdr lst))))))))
+
