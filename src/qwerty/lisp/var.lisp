@@ -24,18 +24,14 @@
                                                                             (qwerty/map-update m n v)
                                                                             v)))))))
 
-;; (qwerty/defgofun Var (name)
-;;   ((interface) (interface))
-;;   )
 
+(qwerty/godef InternVar
+              (qwerty/fn* (name value)
+                          (qwerty/let* ((v (qwerty/cast *AVar (Var name))))
+                                       (qwerty/do
+                                         (qwerty/set! (qwerty/.- v value) value)
+                                         v))))
 
-
-(qwerty/defgofun InternVar (name value)
-  ((interface interface) (interface))
-  (qwerty/let* ((v (qwerty/cast *AVar (Var name))))
-               (qwerty/do
-                 (qwerty/set! (qwerty/.- v value) value)
-                 v)))
 (qwerty/godef string_concat (qwerty/fn* (x y)
                                         (qwerty/let* ((a (qwerty/cast string x))
                                                       (b (qwerty/cast string y)))
@@ -49,5 +45,3 @@
                  "(qwerty/var "
                  (qwerty/.- s name))
                 ")")))
-
-

@@ -105,13 +105,13 @@
 
 (qwerty/godef raiseS (qwerty.Symbol "raise"))
 
-(qwerty/godef raiseV (qwerty/. qwerty.InternVar raiseS
-                               (qwerty/fn* (err)
-                                           (qwerty/do
-                                             (qwerty/. panic err)
-                                             nil))))
+(qwerty/godef raiseV (qwerty.InternVar raiseS
+                                       (qwerty/fn* (err)
+                                                   (qwerty/do
+                                                     (qwerty/. panic err)
+                                                     nil))))
 
-(qwerty/godef foo (qwerty/. qwerty.InternVar (qwerty.Symbol "foo") "Hello Var World"))
+(qwerty/godef foo (qwerty.InternVar (qwerty.Symbol "foo") "Hello Var World"))
 
 (qwerty/godef deref (qwerty/fn* (v)
                                 (qwerty/let* ((v (qwerty/cast *qwerty.AVar v)))

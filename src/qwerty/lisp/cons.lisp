@@ -37,15 +37,10 @@
 
 ;; example of what qwerty/def should expand in to
 (qwerty/godef _
-              (qwerty/. InternVar (Symbol "qwerty/map")
-                        (qwerty/let* ((mapV (Var (Symbol "qwerty/map"))))
-                                     (qwerty/fn* (f lst)
-                                                 (qwerty/if (qwerty/nil? lst)
-                                                            nil
-                                                            (Cons (f (Car lst))
-                                                                  ((deref mapV) f (Cdr lst))))))))
-
-
-
-
-
+              (InternVar (Symbol "qwerty/map")
+                         (qwerty/let* ((mapV (Var (Symbol "qwerty/map"))))
+                                      (qwerty/fn* (f lst)
+                                                  (qwerty/if (qwerty/nil? lst)
+                                                    nil
+                                                    (Cons (f (Car lst))
+                                                          ((deref mapV) f (Cdr lst))))))))
