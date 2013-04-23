@@ -64,7 +64,8 @@
                                                   (qwerty/go-method-call v HashCode))
                                      (qwerty/results (v ok) (qwerty/cast string item)
                                                      (qwerty/if ok
-                                                       (qwerty/. Hash_string v)
+                                                       (qwerty/let* ((v (qwerty/cast string v)))
+                                                                    (qwerty/. Hash_string v))
                                                        (qwerty/do
                                                          (qwerty/. panic "can't hash")
                                                          nil)))))))

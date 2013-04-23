@@ -599,6 +599,17 @@
 (defmethod lower-seq 'qwerty/results [[_ values application body]]
   (assert (seq? application) (pr-str `(qwerty/results ~values ~application ~body)))
   (cond
+   (not (and (seq? body)
+             (= 'qwerty/do (first body))
+             (seq? (second body))
+             (= 'qwerty/local (first (second body)))
+             (= (first values) (second (second body)))))
+   (lower
+    `(qwerty/results ~values ~application
+                     (qwerty/do
+                       ~@(for [n values]
+                           `(qwerty/local ~n ~'interface))
+                       ~body)))
    (= (first application) 'qwerty/go-method-call)
    `(qwerty/results ~values ~application ~(lower body))
    (= (first application) 'qwerty/.)
@@ -1169,7 +1180,7 @@
   (println "goto" (str "L" label)))
 
 (defmethod go-seq 'qwerty/results [[_  names exp body]]
-  (print (apply str (interpose \, (map munge names))) ":=")
+  (print (apply str (interpose \, (map munge names))) "=")
   (binding [*context* :statement]
     (go exp))
   (println)
@@ -1326,7 +1337,17 @@
 (defmethod raise-locals-seq 'qwerty/new [exp env] [exp env])
 (defmethod raise-locals-seq 'qwerty/cast [exp env] [exp env])
 (defmethod raise-locals-seq 'qwerty/.- [exp env] [exp env])
-(defmethod raise-locals-seq 'qwerty/results [exp env] [exp env])
+(defmethod raise-locals-seq 'qwerty/results [[_ values app body] env]
+  [(if (and (seq? body)
+            (= 'qwerty/do (first body))
+            (some #(and (seq? %) (= 'qwerty/local (first %))) (rest body)))
+     `(qwerty/do
+        ~@(filter #(and (seq? %) (= 'qwerty/local (first %))) (rest body))
+        (qwerty/results ~values ~app
+                        (qwerty/do
+                          ~@(remove #(and (seq? %) (= 'qwerty/local (first %))) (rest body)))))
+     `(qwerty/results ~values ~app ~body))
+   env])
 (defmethod raise-locals-seq 'qwerty/labels [[_ & exps] env]
   (let [x (for [e exps]
             (if (symbol? e)
