@@ -31,8 +31,8 @@
 (qwerty/godef Cdr (qwerty/fn* (c) (qwerty/. CdrF c)))
 
 (qwerty/godef iadd (qwerty/fn* (x y)
-                               (qwerty/let* ((a (qwerty/cast int x))
-                                             (b (qwerty/cast int y)))
+                               (qwerty/let* ((a (qwerty/cast int32 x))
+                                             (b (qwerty/cast int32 y)))
                                             (qwerty/+ a b))))
 
 (qwerty/godef ListCount (qwerty/fn* (lst)

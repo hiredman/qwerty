@@ -164,6 +164,8 @@
 (qwerty/defgofun main ()
   (())
   (qwerty/do
+    (println "hash of foo")
+    (println (qwerty/. qwerty.Hash_string "foo"))
     (println "main")
     (println (deref (qwerty.Var (qwerty/quote qwerty/first))))
     (qwerty/. test2)

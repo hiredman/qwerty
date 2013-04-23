@@ -1348,3 +1348,19 @@
             (binding [*out* o]
               (doseq [e @global-env]
                 (println e)))))))))
+
+
+
+(comment
+
+  ;; state for interpreter
+
+  {:vtables {type methods}
+   :stack [{name {:value value
+                  :type type}}]
+   :globals {}
+   :args []
+   :returns []}
+
+
+  )
