@@ -512,11 +512,16 @@
       `(qwerty/do
          ~(lower lv)
          (qwerty/set! ~f nil)))
+     (= 'qwerty/results (first lv))
+     (let [[_ values app body] lv]
+       (lower
+        `(qwerty/results ~values ~app
+                         ~(lower `(qwerty/set! ~f ~body)))))
      :else
      (let [bindings (for [x lv]
                       (if (symbol? x)
                         (list x x)
-                        (list (gensym 'arg) (lower x))))
+                        (list (gensym 'setbang) (lower x))))
            result (gensym 'result)]
        (lower
         `(qwerty/let* (~@(remove #(= (first %) (second %)) bindings)
@@ -592,11 +597,14 @@
 
 ;;complicated
 (defmethod lower-seq 'qwerty/results [[_ values application body]]
+  (assert (seq? application) (pr-str `(qwerty/results ~values ~application ~body)))
   (cond
    (= (first application) 'qwerty/go-method-call)
    `(qwerty/results ~values ~application ~(lower body))
    (= (first application) 'qwerty/.)
-   `(qwerty/results ~values ~application ~(lower body))
+   `(qwerty/results ~values ~(lower application) ~(lower body))
+   (= (first application) 'qwerty/cast)
+   `(qwerty/results ~values ~(lower application) ~(lower body))
    (= (first application) 'qwerty/map-entry)
    (let [[_ m k] application]
      (if (and (not (coll? m))
@@ -747,7 +755,7 @@
     (let [bindings (for [a args]
                      (if (symbol? a)
                        (list a a)
-                       (list (gensym 'arg) (lower a))))]
+                       (list (gensym 'mapu) (lower a))))]
       (lower
        `(qwerty/let* ~(remove #(= (first %) (second %)) bindings)
                      (qwerty/map-update ~@(map first bindings)))))))

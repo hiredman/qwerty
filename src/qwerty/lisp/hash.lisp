@@ -2,13 +2,11 @@
 (qwerty/import unicode/utf8)
 (qwerty/import math)
 
-(qwerty/definterface Equaler
-  (Equal (a2) (result1)))
-
 ;; hashcodes are int32
 
 (qwerty/definterface Hasher
-  (HashCode (a2) (result1)))
+  (Equal (a2) (result1))
+  (HashCode () (result1)))
 
 (qwerty/godef sum
               (qwerty/fn* (start end fun)
@@ -56,6 +54,24 @@
                                                                   (mult b
                                                                         (pow 31 (isub (isub n 1) i)))))))))
                v))
+
+
+(qwerty/defgofun Hash (item)
+  ((interface) (int))
+  (qwerty/let* ((r (qwerty/results (v ok) (qwerty/cast Hasher item)
+                                   (qwerty/if ok
+                                     (qwerty/let* ((v (qwerty/cast Hasher v)))
+                                                  (qwerty/go-method-call v HashCode))
+                                     (qwerty/results (v ok) (qwerty/cast string item)
+                                                     (qwerty/if ok
+                                                       (qwerty/. Hash_string v)
+                                                       (qwerty/do
+                                                         (qwerty/. panic "can't hash")
+                                                         nil)))))))
+               (qwerty/cast int r)))
+
+
+
 
 
 
