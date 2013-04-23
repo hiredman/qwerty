@@ -30,15 +30,10 @@
 
 (qwerty/godef Cdr (qwerty/fn* (c) (qwerty/. CdrF c)))
 
-(qwerty/godef iadd (qwerty/fn* (x y)
-                               (qwerty/let* ((a (qwerty/cast int x))
-                                             (b (qwerty/cast int y)))
-                                            (qwerty/+ a b))))
-
 (qwerty/godef ListCount (qwerty/fn* (lst)
                                     (qwerty/if (qwerty/nil? lst)
                                       0
-                                      (iadd 1 (Cdr lst)))))
+                                      (qwerty/. iadd 1 (Cdr lst)))))
 
 (qwerty/godef deref (qwerty/fn* (v) (qwerty/go-method-call (qwerty/cast *AVar v) Deref)))
 
