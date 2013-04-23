@@ -146,6 +146,18 @@
   (assert (= 2 (count new-children)))
   `(qwerty/+ ~@new-children))
 
+(defmethod children-of-seq 'qwerty/- [[_ & args]]
+  args)
+(defmethod make-seq 'qwerty/- [[_ a b] new-children]
+  (assert (= 2 (count new-children)))
+  `(qwerty/- ~@new-children))
+
+(defmethod children-of-seq 'qwerty/* [[_ & args]]
+  args)
+(defmethod make-seq 'qwerty/* [[_ a b] new-children]
+  (assert (= 2 (count new-children)))
+  `(qwerty/* ~@new-children))
+
 (defmethod children-of-seq 'qwerty/goderef [[_ v]]
   (list v))
 (defmethod make-seq 'qwerty/goderef [[_ v] new-children]
@@ -157,6 +169,12 @@
 (defmethod make-seq 'qwerty/nil? [[_ v] new-children]
   (assert (= 1 (count new-children)))
   `(qwerty/nil? ~@new-children))
+
+(defmethod children-of-seq 'qwerty/nth* [[_ a b]]
+  (list a b))
+(defmethod make-seq 'qwerty/nth* [_ new-children]
+  (assert (= 2 (count new-children)))
+  `(qwerty/nth* ~@new-children))
 
 (defmethod children-of-seq 'qwerty/test [[_ c label]]
   (list c))

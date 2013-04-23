@@ -68,6 +68,18 @@
   `(qwerty/+ ~(close-over a variables this-name)
              ~(close-over b variables this-name)))
 
+(defmethod close-over-seq 'qwerty/nth* [[_ a b] variables this-name]
+  `(qwerty/nth* ~(close-over a variables this-name)
+                ~(close-over b variables this-name)))
+
+(defmethod close-over-seq 'qwerty/- [[_ a b] variables this-name]
+  `(qwerty/- ~(close-over a variables this-name)
+             ~(close-over b variables this-name)))
+
+(defmethod close-over-seq 'qwerty/* [[_ a b] variables this-name]
+  `(qwerty/* ~(close-over a variables this-name)
+             ~(close-over b variables this-name)))
+
 (defmethod close-over-seq 'qwerty/let* [[_ bindings body :as form] variables this-name]
   (let [b (gensym)
         r (reduce
@@ -232,6 +244,15 @@
   [1])
 
 (defmethod return-count-seq 'qwerty/map-update [_]
+  [1])
+
+(defmethod return-count-seq 'qwerty/- [_]
+  [1])
+
+(defmethod return-count-seq 'qwerty/* [_]
+  [1])
+
+(defmethod return-count-seq 'qwerty/nth* [_]
   [1])
 
 (defmethod return-count-seq :default [x]
@@ -517,6 +538,36 @@
                             (~b_ ~(lower b)))
                            (qwerty/+ ~a_ ~b_))))
     `(qwerty/+ ~a ~b)))
+
+(defmethod lower-seq 'qwerty/- [[_ a b]]
+  (if (or (coll? a)
+          (coll? b))
+    (let [a_ (gensym 'a)
+          b_ (gensym 'b)]
+      (lower `(qwerty/let* ((~a_ ~(lower a))
+                            (~b_ ~(lower b)))
+                           (qwerty/- ~a_ ~b_))))
+    `(qwerty/- ~a ~b)))
+
+(defmethod lower-seq 'qwerty/* [[_ a b]]
+  (if (or (coll? a)
+          (coll? b))
+    (let [a_ (gensym 'a)
+          b_ (gensym 'b)]
+      (lower `(qwerty/let* ((~a_ ~(lower a))
+                            (~b_ ~(lower b)))
+                           (qwerty/* ~a_ ~b_))))
+    `(qwerty/* ~a ~b)))
+
+(defmethod lower-seq 'qwerty/nth* [[_ a b]]
+  (if (or (coll? a)
+          (coll? b))
+    (let [a_ (gensym 'a)
+          b_ (gensym 'b)]
+      (lower `(qwerty/let* ((~a_ ~(lower a))
+                            (~b_ ~(lower b)))
+                           (qwerty/nth* ~a_ ~b_))))
+    `(qwerty/nth* ~a ~b)))
 
 (defmethod lower-seq 'qwerty/godef [[_ n v]]
   (cond
@@ -1024,10 +1075,35 @@
   (if (= :return *context*)
     (println)))
 
+(defmethod go-seq 'qwerty/- [[_ a b]]
+  (if (= :return *context*)
+    (print "return"))
+  (print "(" a "-" b ")")
+  (if (= :return *context*)
+    (println)))
+
+(defmethod go-seq 'qwerty/* [[_ a b]]
+  (if (= :return *context*)
+    (print "return"))
+  (print "(" a "*" b ")")
+  (if (= :return *context*)
+    (println)))
+
 (defmethod go-seq 'qwerty/= [[_ a b]]
   (if (= :return *context*)
     (print "return"))
   (print "(" a "==" b ")")
+  (if (= :return *context*)
+    (println)))
+
+(defmethod go-seq 'qwerty/nth* [[_ a b]]
+  (if (= :return *context*)
+    (print "return"))
+  (binding [*context* :statement]
+    (go a)
+    (print "[")
+    (go b)
+    (print "]"))
   (if (= :return *context*)
     (println)))
 
@@ -1259,6 +1335,8 @@
       [`(qwerty/labels ~@exps) env])))
 (defmethod raise-locals-seq 'qwerty/go-method-call [exp env] [exp env])
 (defmethod raise-locals-seq 'qwerty/+ [exp env] [exp env])
+(defmethod raise-locals-seq 'qwerty/- [exp env] [exp env])
+(defmethod raise-locals-seq 'qwerty/* [exp env] [exp env])
 (defmethod raise-locals-seq 'qwerty/goderef [exp env] [exp env])
 (defmethod raise-locals-seq 'qwerty/nil? [exp env] [exp env])
 (defmethod raise-locals-seq 'qwerty/test [exp env] [exp env])
@@ -1270,6 +1348,7 @@
 (defmethod raise-locals-seq 'qwerty/let* [exp env] [exp env])
 (defmethod raise-locals-seq 'qwerty/map-update [exp env] [exp env])
 (defmethod raise-locals-seq 'qwerty/godef [exp env] [exp env])
+(defmethod raise-locals-seq 'qwerty/nth* [exp env] [exp env])
 
 (defn raise-locals-out-of-labels [form seen]
   (first (expand form seen raise-locals)))

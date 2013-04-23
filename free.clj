@@ -56,6 +56,9 @@
   [exp (update-in env [:bound] into args)])
 (defmethod free-seq 'qwerty/map-update [exp env] [exp env])
 (defmethod free-seq 'qwerty/quote [exp env] [exp env])
+(defmethod free-seq 'qwerty/- [exp env] [exp env])
+(defmethod free-seq 'qwerty/* [exp env] [exp env])
+(defmethod free-seq 'qwerty/nth* [exp env] [exp env])
 
 (defn free-variables [exp]
   (:free (second (expand exp {:free #{}

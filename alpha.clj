@@ -32,6 +32,12 @@
 (defmethod α-convert-seq 'qwerty/+ [[_ a b] env]
   `(qwerty/+ ~(α-convert a env) ~(α-convert b env)))
 
+(defmethod α-convert-seq 'qwerty/- [[_ a b] env]
+  `(qwerty/- ~(α-convert a env) ~(α-convert b env)))
+
+(defmethod α-convert-seq 'qwerty/* [[_ a b] env]
+  `(qwerty/* ~(α-convert a env) ~(α-convert b env)))
+
 (defmethod α-convert-seq 'qwerty/set! [[_ f v] env]
   `(qwerty/set! ~(α-convert f env) ~(α-convert v env)))
 
@@ -140,6 +146,10 @@
 (defmethod α-convert-seq 'qwerty/= [[_ a b] env]
   `(qwerty/= ~(α-convert a env)
              ~(α-convert b env)))
+
+(defmethod α-convert-seq 'qwerty/nth* [[_ a b] env]
+  `(qwerty/nth* ~(α-convert a env)
+                ~(α-convert b env)))
 
 (defmethod α-convert-seq 'qwerty/go-> [[_ [value channel] body] env]
   `(qwerty/go-> (~(α-convert value env)

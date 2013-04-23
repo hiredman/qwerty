@@ -1,5 +1,6 @@
 (qwerty/package qwerty)
 (qwerty/import unicode/utf8)
+(qwerty/import math)
 
 (qwerty/definterface Equaler
   (Equal (a2) (result1)))
@@ -26,18 +27,35 @@
                                          sum))))
 
 (qwerty/godef isub (qwerty/fn* (x y)
-                               (qwerty/let* ((a (qwerty/cast int32 x))
-                                             (b (qwerty/cast int32 y)))
+                               (qwerty/let* ((a (qwerty/cast int x))
+                                             (b (qwerty/cast int y)))
                                             (qwerty/- a b))))
 
+(qwerty/godef mult (qwerty/fn* (x y)
+                               (qwerty/let* ((a (qwerty/cast int x))
+                                             (b (qwerty/cast int y)))
+                                            (qwerty/* a b))))
+
+(qwerty/godef pow (qwerty/fn* (x y)
+                              (qwerty/let* ((a (qwerty/cast float64 (qwerty/. float64 (qwerty/cast int x))))
+                                            (b (qwerty/cast float64 (qwerty/. float64 (qwerty/cast int y))))
+                                            (c (qwerty/. math.Pow a b))
+                                            (c (qwerty/cast float64 c)))
+                                           (qwerty/. int c))))
+
 (qwerty/defgofun Hash_string (str)
-  ((string) (int32))
+  ((string) (int))
   (qwerty/let* ((n (qwerty/cast int (qwerty/. utf8.RuneCountInString str)))
                 (v (qwerty/cast int (sum 0 (isub n 1)
                                          (qwerty/fn* (i)
-                                                     (mult (rune_at str i)
-                                                           (pow 31 (isub (isub n 1) i))))))))
-               (qwerty/. int32 v)))
+                                                     (qwerty/let* ((i (qwerty/cast int i))
+                                                                   (str (qwerty/cast string str))
+                                                                   (b (qwerty/nth* str i))
+                                                                   (b (qwerty/cast byte b))
+                                                                   (b (qwerty/. int b)))
+                                                                  (mult b
+                                                                        (pow 31 (isub (isub n 1) i)))))))))
+               v))
 
 
 
