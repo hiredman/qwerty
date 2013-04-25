@@ -447,7 +447,8 @@
         (map lower body))))
 
 (defmethod lower-seq 'qwerty/.- [[_ v f]]
-  (if (coll? v)
+  (if (and (coll? v)
+           (not (= 'qwerty/goref (first v))))
     (let [o (gensym 'o)]
       `(qwerty/let* ((~o ~(lower v)))
                     (qwerty/.- ~o ~f)))
@@ -1341,34 +1342,35 @@
    form))
 
 (declare raise-locals-out-of-labels)
-(defmulti raise-locals (fn [exp env] (type exp)))
-(defmulti raise-locals-seq (fn [exp env] (first exp)))
-(defmethod raise-locals clojure.lang.ISeq [exp env]
-  (raise-locals-seq exp env))
-(defmethod raise-locals clojure.lang.Symbol [exp env] [exp env])
-(defmethod raise-locals java.lang.String [exp env] [exp env])
-(defmethod raise-locals java.lang.Number [exp env] [exp env])
-(defmethod raise-locals java.lang.Character [exp env] [exp env])
-(defmethod raise-locals nil [exp env] [exp env])
-(defmethod raise-locals-seq 'qwerty/struct [exp env]
-  [exp env])
-(defmethod raise-locals-seq 'qwerty/definterface [exp env]
-  [exp env])
-(defmethod raise-locals-seq 'qwerty/do [exp seen]
-  [exp seen])
-(defmethod raise-locals-seq 'qwerty/local [local seen]
-  [(if (contains? seen local) `(qwerty/do) local) seen])
-(defmethod raise-locals-seq 'qwerty/set! [exp env] [exp env])
-(defmethod raise-locals-seq 'qwerty/make [exp env] [exp env])
-(defmethod raise-locals-seq 'qwerty/defgomethod [exp env] [exp env])
-(defmethod raise-locals-seq 'qwerty/. [exp env] [exp env])
-(defmethod raise-locals-seq 'qwerty/values [exp env] [exp env])
-(defmethod raise-locals-seq 'qwerty/comment [exp env] [exp env])
-(defmethod raise-locals-seq 'qwerty/defgofun [exp env] [exp env])
-(defmethod raise-locals-seq 'qwerty/new [exp env] [exp env])
-(defmethod raise-locals-seq 'qwerty/cast [exp env] [exp env])
-(defmethod raise-locals-seq 'qwerty/.- [exp env] [exp env])
-(defmethod raise-locals-seq 'qwerty/results [[_ values app body] env]
+(defmulti raise-locals (fn [exp up-env down-env] (type exp)))
+(defmulti raise-locals-seq (fn [exp up-env down-env] (first exp)))
+(defmethod raise-locals clojure.lang.ISeq [exp up-env down-env]
+  (raise-locals-seq exp up-env down-env))
+(defmethod raise-locals clojure.lang.Symbol [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals java.lang.String [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals java.lang.Number [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals java.lang.Character [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals nil [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/struct [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/definterface [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/do [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/local [local up-env down-env]
+  [(if (contains? down-env local) `
+     (qwerty/do)
+     local)
+   up-env
+   down-env])
+(defmethod raise-locals-seq 'qwerty/set! [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/make [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/defgomethod [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/. [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/values [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/comment [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/defgofun [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/new [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/cast [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/.- [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/results [[_ values app body] up-env down-env]
   [(if (and (seq? body)
             (= 'qwerty/do (first body))
             (some #(and (seq? %) (= 'qwerty/local (first %))) (rest body)))
@@ -1378,41 +1380,45 @@
                         (qwerty/do
                           ~@(remove #(and (seq? %) (= 'qwerty/local (first %))) (rest body)))))
      `(qwerty/results ~values ~app ~body))
-   env])
-(defmethod raise-locals-seq 'qwerty/labels [[_ & exps] env]
+   up-env
+   down-env])
+(defmethod raise-locals-seq 'qwerty/labels [[_ & exps] up-env down-env]
   (let [x (for [e exps]
             (if (symbol? e)
               [#{} e]
               (let [locals (filter #(and (seq? %)
                                          (= 'qwerty/local (first %)))
                                    (tree-seq seq? seq e))]
-                [(set locals) (raise-locals-out-of-labels e (into env locals))])))]
+                [(set locals) (raise-locals-out-of-labels e (into down-env locals))])))]
     (if (not (empty? (mapcat first x)))
       [`(qwerty/do
           ~@(doall (distinct (mapcat first x)))
           (qwerty/labels ~@(doall (map second x))))
-       env]
-      [`(qwerty/labels ~@exps) env])))
-(defmethod raise-locals-seq 'qwerty/go-method-call [exp env] [exp env])
-(defmethod raise-locals-seq 'qwerty/+ [exp env] [exp env])
-(defmethod raise-locals-seq 'qwerty/- [exp env] [exp env])
-(defmethod raise-locals-seq 'qwerty/* [exp env] [exp env])
-(defmethod raise-locals-seq 'qwerty/goderef [exp env] [exp env])
-(defmethod raise-locals-seq 'qwerty/nil? [exp env] [exp env])
-(defmethod raise-locals-seq 'qwerty/test [exp env] [exp env])
-(defmethod raise-locals-seq 'qwerty/goto [exp env] [exp env])
-(defmethod raise-locals-seq 'qwerty/go-> [exp env] [exp env])
-(defmethod raise-locals-seq 'qwerty/go<- [exp env] [exp env])
-(defmethod raise-locals-seq 'qwerty/go [exp env] [exp env])
-(defmethod raise-locals-seq 'qwerty/= [exp env] [exp env])
-(defmethod raise-locals-seq 'qwerty/let* [exp env] [exp env])
-(defmethod raise-locals-seq 'qwerty/map-update [exp env] [exp env])
-(defmethod raise-locals-seq 'qwerty/godef [exp env] [exp env])
-(defmethod raise-locals-seq 'qwerty/nth* [exp env] [exp env])
-(defmethod raise-locals-seq 'qwerty/goref [exp env] [exp env])
+       up-env
+       down-env]
+      [`(qwerty/labels ~@exps)
+       up-env
+       down-env])))
+(defmethod raise-locals-seq 'qwerty/go-method-call [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/+ [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/- [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/* [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/goderef [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/nil? [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/test [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/goto [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/go-> [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/go<- [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/go [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/= [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/let* [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/map-update [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/godef [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/nth* [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/goref [exp up-env down-env] [exp up-env down-env])
 
 (defn raise-locals-out-of-labels [form seen]
-  (first (expand form seen raise-locals)))
+  (first (expand form {} seen raise-locals)))
 
 (defn f [form]
   ;; (binding [*out* *err*]
@@ -1450,12 +1456,16 @@
 
 (try
   (let [eof (Object.)]
-    (with-open [i (io/reader "compilation-env")]
+    (with-open [i (-> (io/reader "compilation-env") java.io.PushbackReader.)]
       (loop [name (read i false eof)]
         (when-not (= eof name)
           (swap! global-env conj name)
-          (recur (read *in* false eof))))))
-  (catch Exception _))
+          (recur (read i false eof))))))
+  (binding [*out* *err*]
+    (prn @global-env))
+  (catch Exception e
+    (binding [*out* *err*]
+      (prn e))))
 
 (let [eof (Object.)]
   (with-open [ir (if (System/getenv "IR")
@@ -1474,9 +1484,9 @@
                  (println "import " (pr-str "qwerty/lisp"))))
              (and (seq? form) (= (first form) 'qwerty/import))
              (println "import " (pr-str (str (second form))))
-             :else (let [[new-form env] (varize form {})
-                         new-form (if (seq (:vars env))
-                                    `(qwerty/let* ~(for [[k v] (:vars env)]
+             :else (let [[new-form up-env down-env] (varize form {} {})
+                         new-form (if (seq (:vars up-env))
+                                    `(qwerty/let* ~(for [[k v] (:vars up-env)]
                                                      (list k (if (= *package* 'qwerty)
                                                                `(qwerty/. ~'Var_ (qwerty/quote ~v))
                                                                `(qwerty/. ~'qwerty.Var_ (qwerty/quote ~v)))))

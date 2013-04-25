@@ -260,6 +260,11 @@
   (assert (= 0 (count new-children)))
   `(qwerty/goref ~v))
 
+(defmethod children-of-seq 'qwerty/map-entry [[_ m k]] (list m k))
+(defmethod make-seq 'qwerty/map-entry [[_ v] new-children]
+  (assert (= 2 (count new-children)))
+  `(qwerty/map-entry ~@new-children))
+
 (defmethod children-of-seq :default [exp]
   (assert (not (and (symbol? (first exp))
                     (= "qwerty" (namespace (first exp)))))
@@ -271,23 +276,28 @@
           (pr-str exp))
   new-children)
 
-(defn expand [form env f]
-  (assert (not (vector? form)) (pr-str env))
+(defn expand [form up-env down-env f]
+  (assert (not (vector? form)) (pr-str up-env down-env))
   (loop [form form
-         env env]
-    (let [[new-form new-env] (f form env)
+         up-env up-env
+         down-env down-env]
+    (let [[new-form new-up-env new-down-env :as r] (f form up-env down-env)
+          _ (assert (= 3 (count r)))
           new-form (if (instance? clojure.lang.IMeta new-form)
                      (with-meta new-form (meta form))
                      new-form)
           x form]
       (if (= new-form form)
-        (let [[new-env new-children] (reduce
-                                      (fn [[env children] form]
-                                        (assert (not (vector? form))
-                                                (pr-str form new-form x (children-of new-form)))
-                                        (let [[new-form new-env] (expand form env f)]
-                                          [new-env (conj children new-form)]))
-                                      [new-env []]
-                                      (children-of new-form))]
-          [(make new-form (seq new-children)) new-env])
-        (recur new-form new-env)))))
+        (let [[new-up-env new-down-env' new-children]
+              (reduce
+               (fn [[up-env down-env children] form]
+                 (assert (not (vector? form))
+                         (pr-str form new-form x (children-of new-form)))
+                 (let [[new-form new-up-env new-down-env :as r] (expand form up-env down-env f)]
+                   (assert (= 3 (count r)))
+                   [new-up-env down-env (conj children new-form)]))
+               [new-up-env new-down-env []]
+               (children-of new-form))]
+          [(make new-form (seq new-children)) new-up-env down-env])
+        (recur new-form new-up-env new-down-env)))))
+;; needs to return an up env and a down env

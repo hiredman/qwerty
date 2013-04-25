@@ -119,12 +119,12 @@
                                              (qwerty/go-method-call v Deref))))
 
 ((qwerty/goref println) "here1111111")
-((qwerty/goref println) ((qwerty/goref deref) (qwerty.Var (qwerty/quote qwerty/first))))
+((qwerty/goref println) ((qwerty/goref deref) ((qwerty/goref qwerty.Var) (qwerty/quote qwerty/first))))
 
 (qwerty/defgofun test3 ()
   (())
   (qwerty/do
-    ((qwerty/goref println) ((qwerty/goref deref) (qwerty.Var (qwerty/quote a/b))))
+    ((qwerty/goref println) ((qwerty/goref deref) ((qwerty/goref qwerty.Var) (qwerty/quote a/b))))
     ((qwerty/goref println) ((qwerty/goref deref) (qwerty/goref foo)))
     ((qwerty/goref println) ((qwerty/goref qwerty.Symbol) "foo/bar"))
     (qwerty/let* ((readd (qwerty/fn*
@@ -174,7 +174,7 @@
     ((qwerty/goref println) (qwerty/. qwerty.Hash "foo"))
     ((qwerty/goref println) (qwerty/. qwerty.Hash (qwerty/quote foo)))
     ((qwerty/goref println) "main")
-    ((qwerty/goref println) ((qwerty/goref deref) (qwerty.Var (qwerty/quote qwerty/first))))
+    ((qwerty/goref println) ((qwerty/goref deref) ((qwerty/goref qwerty.Var) (qwerty/quote qwerty/first))))
     (qwerty/. test2)
     (qwerty/. test1)
     ((qwerty/goref println) "Printing Var")
@@ -182,11 +182,7 @@
     ((qwerty/goref println) ((qwerty/goref qwerty.Car) (qwerty/quote ("first of list" "second of list"))))
     ((qwerty/goref println) "PrStr")
     ((qwerty/goref println) ((qwerty/goref qwerty.PrStr) (qwerty/quote foo)))
-    ((qwerty/goref println) "reduce")
-    ((qwerty/goref println) (((qwerty/goref deref)
-                              ((qwerty/goref qwerty.Var)
-                               ((qwerty/goref qwerty.Symbol)
-                                "lisp/fold")))
-                             (qwerty/goref iadd) 0 (qwerty/quote (1 2 3 4 5))))
+    ((qwerty/goref println) "fold")
+    ((qwerty/goref println) (lisp/fold (qwerty/goref iadd) 0 (qwerty/quote (1 2 3 4 5))))
     (X)
     (qwerty/. test3)))

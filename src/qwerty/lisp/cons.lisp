@@ -70,4 +70,3 @@
     (qwerty/. panic "hashing cons")
     0))
 
-
