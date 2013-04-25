@@ -12,6 +12,16 @@
    [s env]
    (contains? env s)
    [s env]
+   (and (contains? @global-env s)
+        (contains? (set (vals (:vars env))) s))
+   [(if (= *package* 'qwerty)
+      `(qwerty/. ~'DerefF ~@(for [[k v] (:vars env)
+                                  :when (= v s)]
+                              k))
+      `(qwerty/. ~'qwerty.DerefF ~@(for [[k v] (:vars env)
+                                         :when (= v s)]
+                                     k)))
+    env]
    (contains? @global-env s)
    (let [v (with-meta (gensym 'v) {:var true})]
      [(if (= *package* 'qwerty)

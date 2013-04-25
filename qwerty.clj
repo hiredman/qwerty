@@ -1482,9 +1482,9 @@
                                                                `(qwerty/. ~'qwerty.Var_ (qwerty/quote ~v)))))
                                                   ~new-form)
                                     new-form)
-                         _ (binding [*out* *err*]
-                             (pprint new-form)
-                             (println))
+                         ;; _ (binding [*out* *err*]
+                         ;;     (pprint new-form)
+                         ;;     (println))
                          m (top-level-init (f (lower (α-convert new-form {}))))]
                      (when (System/getenv "IR")
                        (binding [*out* ir

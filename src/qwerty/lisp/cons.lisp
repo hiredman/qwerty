@@ -48,7 +48,7 @@
                                     (f ((qwerty/goref Car) lst))
                                     (lisp/map f ((qwerty/goref Cdr) lst))))))
 
-(qwerty/def lisp/reduce
+(qwerty/def lisp/fold
   (qwerty/fn* (f init lst)
               (qwerty/do
                 (qwerty/labels
@@ -69,3 +69,5 @@
   (qwerty/do
     (qwerty/. panic "hashing cons")
     0))
+
+
