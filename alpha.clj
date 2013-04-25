@@ -175,6 +175,11 @@
                     ~(α-convert body (assoc env
                                        result nn))))))
 
+(defmethod α-convert-seq 'qwerty/def [[_ n v] env]
+  `(qwerty/def ~n ~(α-convert v env)))
+
+(defmethod α-convert-seq 'qwerty/goref [[_ v] env]
+  `(qwerty/goref ~v))
 
 (defmethod α-convert-seq :default [exp env]
   (assert (not (and (symbol? (first exp))

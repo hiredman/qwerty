@@ -59,6 +59,7 @@
 (defmethod free-seq 'qwerty/- [exp env] [exp env])
 (defmethod free-seq 'qwerty/* [exp env] [exp env])
 (defmethod free-seq 'qwerty/nth* [exp env] [exp env])
+(defmethod free-seq 'qwerty/goref [exp env] [exp env])
 
 (defn free-variables [exp]
   (:free (second (expand exp {:free #{}

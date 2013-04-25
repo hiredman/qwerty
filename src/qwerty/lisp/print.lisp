@@ -10,19 +10,16 @@
                                  (qwerty/let* ((t (qwerty/cast reflect.Type (qwerty/. reflect.TypeOf x))))
                                               (qwerty/go-method-call t String)))))
 
-(qwerty/defgofun init ()
-  (())
-  (qwerty/let* ((k (qwerty/cast string (Type (qwerty/quote foo)))))
-               (qwerty/map-update pr_dispatch k
-                                  (qwerty/fn* (exp) (qwerty/go-method-call (qwerty/cast *ASymbol exp) String)))
-               nil))
+(qwerty/let* ((k (qwerty/cast string ((qwerty/goref Type) (qwerty/quote foo)))))
+             (qwerty/map-update (qwerty/goref pr_dispatch) k
+                                (qwerty/fn* (exp) (qwerty/go-method-call (qwerty/cast *ASymbol exp) String)))
+             nil)
 
 (qwerty/godef PrStr
               (qwerty/fn* (exp)
-                          (qwerty/let* ((pr_dispatch (qwerty/cast "map[string]interface{}" pr_dispatch))
-                                        (k (qwerty/cast string (Type exp))))
+                          (qwerty/let* ((k (qwerty/cast string ((qwerty/goref Type) exp))))
                                        (qwerty/results (value found)
-                                                       (qwerty/map-entry pr_dispatch k)
+                                                       (qwerty/map-entry (qwerty/goref pr_dispatch) k)
                                                        (qwerty/if found
                                                          (value exp)
                                                          "#<unknown>")))))

@@ -7,9 +7,17 @@
 
 (qwerty/godef the_vars (qwerty/make "map[string]*AVar"))
 
+(qwerty/definterface Derefer
+  (Deref () (bar)))
+
 (qwerty/defgomethod Deref *AVar (the_var) (r)
-  ((interface) (interface))
+  (() (interface))
   (qwerty/.- the_var value))
+
+(qwerty/defgofun DerefF (obj)
+  ((interface) (interface))
+  (qwerty/let* ((o (qwerty/cast Derefer obj)))
+               (qwerty/go-method-call o Deref)))
 
 (qwerty/defgofun Var_ (name)
   ((interface) (interface))
@@ -17,7 +25,7 @@
     (qwerty/let* ((n (qwerty/cast *ASymbol name))
                   (n (qwerty/cast string (qwerty/.- n name))))
                  (qwerty/do
-                   (qwerty/results (value found) (qwerty/map-entry the_vars n)
+                   (qwerty/results (value found) (qwerty/map-entry (qwerty/goref the_vars) n)
                                    (qwerty/do
                                      (qwerty/if found
                                        (qwerty/do
@@ -25,7 +33,7 @@
                                        (qwerty/let* ((v (qwerty/new AVar)))
                                                     (qwerty/do
                                                       (qwerty/set! (qwerty/.- v name) n)
-                                                      (qwerty/map-update the_vars n v)
+                                                      (qwerty/map-update (qwerty/goref the_vars) n v)
                                                       v)))))))))
 
 (qwerty/godef Var (qwerty/fn* (name) (qwerty/. Var_ name)))
@@ -49,7 +57,7 @@
   (() (string))
   (qwerty/cast string
                (qwerty/. string_concat
-                (qwerty/. string_concat
-                          "(qwerty/var "
-                          (qwerty/.- s name))
-                ")")))
+                         (qwerty/. string_concat
+                                   "(qwerty/var "
+                                   (qwerty/.- s name))
+                         ")")))

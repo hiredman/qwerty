@@ -248,6 +248,18 @@
   (assert (= 1 (count new-children)))
   `(qwerty/godef ~n ~@new-children))
 
+(defmethod children-of-seq 'qwerty/def [[_ n v]]
+  (swap! global-env conj n)
+  (list v))
+(defmethod make-seq 'qwerty/def [[_ n _] new-children]
+  (assert (= 1 (count new-children)))
+  `(qwerty/def ~n ~@new-children))
+
+(defmethod children-of-seq 'qwerty/goref [_] ())
+(defmethod make-seq 'qwerty/goref [[_ v] new-children]
+  (assert (= 0 (count new-children)))
+  `(qwerty/goref ~v))
+
 (defmethod children-of-seq :default [exp]
   (assert (not (and (symbol? (first exp))
                     (= "qwerty" (namespace (first exp)))))
@@ -260,18 +272,22 @@
   new-children)
 
 (defn expand [form env f]
+  (assert (not (vector? form)) (pr-str env))
   (loop [form form
          env env]
     (let [[new-form new-env] (f form env)
           new-form (if (instance? clojure.lang.IMeta new-form)
                      (with-meta new-form (meta form))
-                     new-form)]
+                     new-form)
+          x form]
       (if (= new-form form)
         (let [[new-env new-children] (reduce
                                       (fn [[env children] form]
+                                        (assert (not (vector? form))
+                                                (pr-str form new-form x (children-of new-form)))
                                         (let [[new-form new-env] (expand form env f)]
                                           [new-env (conj children new-form)]))
                                       [new-env []]
                                       (children-of new-form))]
-          [(make new-form new-children) new-env])
+          [(make new-form (seq new-children)) new-env])
         (recur new-form new-env)))))

@@ -1,7 +1,7 @@
 #!/usr/bin/java -jar /Users/hiredman/src/clojure/target/clojure-1.5.0-master-SNAPSHOT.jar
 
 (require '[clojure.walk :as w]
-         '[clojure.pprint :refer [pprint]]
+         '[clojure.pprint :refer [pprint *print-right-margin*]]
          '[clojure.set :as s]
          '[clojure.java.io :as io])
 
@@ -19,6 +19,7 @@
 (load-file "./expand.clj")
 (load-file "./alpha.clj")
 (load-file "./free.clj")
+(load-file "./var.clj")
 
 (defn fn-interface []
   (if (= *package* 'qwerty)
@@ -166,6 +167,9 @@
 (defmethod close-over-seq 'qwerty/defgofun [exp variables this-name]
   exp)
 
+(defmethod close-over-seq 'qwerty/goref [exp variables this-name]
+  exp)
+
 (defmethod close-over-seq 'qwerty/map-update [[_ map key value] variables this-name]
   `(qwerty/map-update ~(close-over map variables this-name)
                       ~(close-over key variables this-name)
@@ -255,6 +259,9 @@
 (defmethod return-count-seq 'qwerty/nth* [_]
   [1])
 
+(defmethod return-count-seq 'qwerty/goref [_]
+  [1])
+
 (defmethod return-count-seq :default [x]
   (assert (and (seq? x)
                (not (and (symbol? (first x))
@@ -291,8 +298,7 @@
   s)
 
 (defmethod lower clojure.lang.PersistentVector [v]
-  (prn v)
-  (assert false))
+  (lower (seq v)))
 
 (defmethod lower nil [s] nil)
 
@@ -618,8 +624,10 @@
    `(qwerty/results ~values ~(lower application) ~(lower body))
    (= (first application) 'qwerty/map-entry)
    (let [[_ m k] application]
-     (if (and (not (coll? m))
-              (not (coll? k)))
+     (if (and (or (not (coll? m))
+                  (= 'qwerty/goref (first m)))
+              (or (not (coll? k))
+                  (= 'qwerty/goref (first k))))
        `(qwerty/results ~values ~application ~(lower body))
        (let [ke (gensym 'k)
              ma (gensym 'm)]
@@ -761,10 +769,14 @@
                      (qwerty/go ~go))))))
 
 (defmethod lower-seq 'qwerty/map-update [[_ & args]]
-  (if (every? symbol? args)
+  (if (every? #(or (symbol? %)
+                   (and (seq? %)
+                        (= 'qwerty/goref (first %)))) args)
     `(qwerty/map-update ~@args)
     (let [bindings (for [a args]
-                     (if (symbol? a)
+                     (if (or (symbol? a)
+                             (and (seq? a)
+                                  (= 'qwerty/goref (first a))))
                        (list a a)
                        (list (gensym 'mapu) (lower a))))]
       (lower
@@ -793,6 +805,19 @@
       `(qwerty/let* ((~aa ~a)
                      (~bb ~b))
                     (qwerty/= ~aa ~bb))))))
+
+(defmethod lower-seq 'qwerty/goref [exp]
+  exp)
+
+(defmethod lower-seq 'qwerty/def [[_ n v]]
+  (swap! global-env conj n)
+  (lower
+   `(~'qwerty/.
+     ~(if (= *package* 'qwerty)
+        'InternVar_
+        'qwerty.InternVar_)
+     (qwerty/quote ~n)
+     ~(lower v))))
 
 (defmethod lower-seq 'qwerty/quote [[_ v]]
   (cond
@@ -1035,7 +1060,10 @@
 (defmethod go-seq 'qwerty/map-entry [[_ m k]]
   (if (= :return *context*)
     (print "return"))
-  (print "" (str (munge m)  "[" k "]"))
+  (print "" (str (if (and (seq? m)
+                          (= 'qwerty/goref (first m)))
+                   (second m)
+                   (munge m))  "[" k "]"))
   (if (= :return *context*)
     (println)))
 
@@ -1228,6 +1256,9 @@
     (go value)
     (println)))
 
+(defmethod go-seq 'qwerty/goref [[_ v]]
+  (go v))
+
 (defmulti raise-decls type)
 
 (defmethod raise-decls :default [s] s)
@@ -1378,6 +1409,7 @@
 (defmethod raise-locals-seq 'qwerty/map-update [exp env] [exp env])
 (defmethod raise-locals-seq 'qwerty/godef [exp env] [exp env])
 (defmethod raise-locals-seq 'qwerty/nth* [exp env] [exp env])
+(defmethod raise-locals-seq 'qwerty/goref [exp env] [exp env])
 
 (defn raise-locals-out-of-labels [form seen]
   (first (expand form seen raise-locals)))
@@ -1442,9 +1474,21 @@
                  (println "import " (pr-str "qwerty/lisp"))))
              (and (seq? form) (= (first form) 'qwerty/import))
              (println "import " (pr-str (str (second form))))
-             :else (let [m (top-level-init (f (lower (α-convert form {}))))]
+             :else (let [[new-form env] (varize form {})
+                         new-form (if (seq (:vars env))
+                                    `(qwerty/let* ~(for [[k v] (:vars env)]
+                                                     (list k (if (= *package* 'qwerty)
+                                                               `(qwerty/. ~'Var_ (qwerty/quote ~v))
+                                                               `(qwerty/. ~'qwerty.Var_ (qwerty/quote ~v)))))
+                                                  ~new-form)
+                                    new-form)
+                         _ (binding [*out* *err*]
+                             (pprint new-form)
+                             (println))
+                         m (top-level-init (f (lower (α-convert new-form {}))))]
                      (when (System/getenv "IR")
-                       (binding [*out* ir]
+                       (binding [*out* ir
+                                 *print-right-margin* 120]
                          (pprint m)
                          (println)
                          (println)))

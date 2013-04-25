@@ -124,7 +124,7 @@
   (())
   (qwerty/do
     (println (deref (qwerty.Var (qwerty/quote a/b))))
-    (println (deref foo))
+    (println (deref (qwerty/goref foo)))
     (println (qwerty.Symbol "foo/bar"))
     (qwerty/let* ((readd (qwerty/fn*
                           (read read_list)
@@ -140,10 +140,10 @@
                                               (qwerty/do
                                                 (identity err)
                                                 (identity size)
-                                                (qwerty/let* ((foo (qwerty/if (qwerty/nil? err)
+                                                (qwerty/let* ((bar (qwerty/if (qwerty/nil? err)
                                                                      nil
                                                                      ((deref raiseV) err))))
-                                                             (qwerty/. NOP foo))
+                                                             (qwerty/. NOP bar))
                                                 (qwerty/if (qwerty/= b \()
                                                   (qwerty/do
                                                     (read_list rdr))
@@ -161,6 +161,10 @@
                   (rdr (reader fd)))
                  (println (read rdr)))))
 
+(qwerty/def FOO "Hello World")
+
+(qwerty/godef X (qwerty/fn* () (println FOO)))
+
 (qwerty/defgofun main ()
   (())
   (qwerty/do
@@ -168,15 +172,16 @@
     (println (qwerty/. qwerty.Hash "foo"))
     (println (qwerty/. qwerty.Hash (qwerty/quote foo)))
     (println "main")
-    (println (deref (qwerty.Var (qwerty/quote qwerty/first))))
+    (println ((qwerty/goref deref) (qwerty.Var (qwerty/quote qwerty/first))))
     (qwerty/. test2)
     (qwerty/. test1)
     (println "Printing Var")
-    (println (qwerty.Var (qwerty/quote qwerty/map)))
-    (println (qwerty.Car (qwerty/quote ("first of list" "second of list"))))
+    (println ((qwerty/goref qwerty.Var) (qwerty/quote qwerty/map)))
+    (println ((qwerty/goref qwerty.Car) (qwerty/quote ("first of list" "second of list"))))
     (println "PrStr")
-    (println (qwerty.PrStr (qwerty/quote foo)))
+    (println ((qwerty/goref qwerty.PrStr) (qwerty/quote foo)))
     (println "reduce")
-    (println ((deref (qwerty.Var (qwerty.Symbol "qwerty/fold")))
-              iadd 0 (qwerty/quote (1 2 3 4 5))))
+    (println ((deref ((qwerty/goref qwerty.Var) ((qwerty/goref qwerty.Symbol) "qwerty/fold")))
+              (qwerty/goref iadd) 0 (qwerty/quote (1 2 3 4 5))))
+    (X)
     (qwerty/. test3)))
