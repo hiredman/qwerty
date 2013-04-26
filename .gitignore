@@ -2,3 +2,5 @@
 /pkg/
 foo
 stdlib
+**.env
+compilation-env
