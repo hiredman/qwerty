@@ -103,11 +103,11 @@
                                (nop
                                 (qwerty/if (qwerty/= rest nil)
                                   (qwerty/do
-                                    (qwerty/set! r ((qwerty/goref string_append) r (lisp/pr first)))
+                                    (qwerty/set! r ((qwerty/goref string_append) r ((qwerty/goref PrStr) first)))
                                     (qwerty/goto end)
                                     nil)
                                   (qwerty/do
-                                    (qwerty/set! r ((qwerty/goref string_append) r (lisp/pr first)))
+                                    (qwerty/set! r ((qwerty/goref string_append) r ((qwerty/goref PrStr) first)))
                                     (qwerty/set! lst rest)
                                     (qwerty/goto space)
                                     nil))))

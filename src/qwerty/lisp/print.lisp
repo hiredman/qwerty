@@ -44,7 +44,7 @@
 
 
 
-(qwerty/def lisp/pr
+(qwerty/def lisp/pr-str
   (qwerty/fn* (obj) ((qwerty/goref PrStr) obj)))
 
 ;; (qwerty/godef deref (qwerty/fn* (v) (qwerty/go-method-call (qwerty/cast *AVar v) Deref)))

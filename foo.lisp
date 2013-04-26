@@ -189,5 +189,5 @@
     ((qwerty/goref println) "fold")
     ((qwerty/goref println) (lisp/fold (qwerty/goref iadd) 0 (qwerty/quote (1 2 3 4 5))))
     (X)
-    ((qwerty/goref println) (lisp/pr (qwerty/quote (1 2 3 4))))
+    (println (lisp/pr-str (qwerty/quote (1 2 3 4))))
     (qwerty/. test3)))
