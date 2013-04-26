@@ -163,7 +163,7 @@
                                                                      (qwerty/do
                                                                        (read rdr)))))))
                   (read (readd readd read_listd))
-                  (fd ((qwerty/goref open) "./foo.lisp"))
+                  (fd ((qwerty/goref open) "./foo.q"))
                   (rdr ((qwerty/goref reader) fd)))
                  ((qwerty/goref println) (read rdr)))))
 

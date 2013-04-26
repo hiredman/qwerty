@@ -1,6 +1,6 @@
-stdliblispfiles=$(wildcard src/qwerty/lisp/*.lisp)
-stdlibgofiles=$(stdliblispfiles:%.lisp=%.go)
-stdlibenvfiles=$(stdliblispfiles:%.lisp=%.env)
+stdliblispfiles=$(wildcard src/qwerty/lisp/*.q)
+stdlibgofiles=$(stdliblispfiles:%.q=%.go)
+stdlibenvfiles=$(stdliblispfiles:%.q=%.env)
 
 test: foo
 	./foo
@@ -11,7 +11,7 @@ foo: foo.go
 repl: repl.go
 	GOPATH=$$PWD go build repl.go
 
-%.go: %.lisp qwerty.clj alpha.clj Makefile expand.clj free.clj var.clj compilation-env
+%.go: %.q qwerty.clj alpha.clj Makefile expand.clj free.clj var.clj compilation-env
 	./qwerty.clj < $< > /tmp/bar.go
 	gofmt /tmp/bar.go > /tmp/foo.go
 	cp /tmp/foo.go $@
