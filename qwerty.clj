@@ -392,6 +392,9 @@
                (qwerty/do
                  (qwerty/. ~'panic ~(str "bad arity " arg-count "-" return-count))
                  (qwerty/values ~@(repeat return-count nil))))))
+       (qwerty/defgomethod ~'String ~struct-pointer (~'s) (~'s) 
+         (() (~'string))
+         ~(str "#<IFn " struct-name ">"))
        (qwerty/defgofun ~constructor ~(seq free-in-body)
          (~(repeat (count free-in-body) 'interface) ~(symbol (str "*" (name struct-name))))
          ~(lower
@@ -1493,7 +1496,7 @@
 
 (let [eof (Object.)]
   (with-open [ir (if (System/getenv "IR")
-                   (io/writer "ir.lisp")
+                   (io/writer "ir.q")
                    (io/writer "/dev/null"))]
     (binding [*package* nil]
       (try

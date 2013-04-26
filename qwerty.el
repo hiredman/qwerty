@@ -6,6 +6,8 @@
   (put 'qwerty/godef 'lisp-indent-function 'defun)
   (put 'qwerty/def 'lisp-indent-function 'defun)
   (put 'qwerty/if 'lisp-indent-function 1)
+  (put 'qwerty/go-> 'lisp-indent-function 1)
+  (put 'qwerty/go<- 'lisp-indent-function 1)
   (put 'qwerty/results 'lisp-indent-function 'defun)
   (put 'qwerty/defgomethod 'lisp-indent-function 'defun)
   (put 'qwerty/definterface 'lisp-indent-function 'defun)

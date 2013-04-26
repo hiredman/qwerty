@@ -107,13 +107,7 @@
                        (qwerty/let* ((fd (qwerty/cast io.Reader fd)))
                          (qwerty/. bufio.NewReader fd))))
 
-(qwerty/godef raiseS (qwerty/. qwerty.Symbol_ "raise"))
-
-(qwerty/godef raiseV (qwerty/. qwerty.InternVar_ (qwerty/goref raiseS)
-                               (qwerty/fn* (err)
-                                 (qwerty/do
-                                  (qwerty/. panic err)
-                                  nil))))
+(qwerty/def panic (qwerty/fn* (err) (qwerty/do (qwerty/. panic err) nil)))
 
 (qwerty/godef foo (qwerty/. qwerty.InternVar_ (qwerty/. qwerty.Symbol_ "foo") "Hello Var World"))
 
@@ -122,49 +116,50 @@
                         (qwerty/go-method-call v Deref))))
 
 ((qwerty/goref println) "here1111111")
-((qwerty/goref println) ((qwerty/goref deref) ((qwerty/goref qwerty.Var) (qwerty/quote qwerty/first))))
+((qwerty/goref println) ((qwerty/goref deref) ((qwerty/goref qwerty.Var) (qwerty/quote lisp/first))))
 
 (qwerty/defgofun test3 ()
   (())
   (qwerty/do
-   ((qwerty/goref println) "test3")
-   ((qwerty/goref println) ((qwerty/goref deref) ((qwerty/goref qwerty.Var) (qwerty/quote a/b))))
-   ((qwerty/goref println) ((qwerty/goref deref) (qwerty/goref foo)))
-   ((qwerty/goref println) ((qwerty/goref qwerty.Symbol) "foo/bar"))
-   (qwerty/let* ((readd (qwerty/fn* (read read_list)
-                          (qwerty/let*
-                              ((read_listd (qwerty/fn* () (read_list read read_list))))
-                            (qwerty/fn*
-                                (rdr)
-                              (qwerty/let*
-                                  ((read_list (read_listd)))
-                                (qwerty/let*
-                                    ((rdr (qwerty/cast *bufio.Reader rdr)))
-                                  (qwerty/results (b size err) (qwerty/go-method-call rdr ReadRune)
-                                                  (qwerty/do
-                                                   ((qwerty/goref identity) err)
-                                                   ((qwerty/goref identity) size)
-                                                   (qwerty/let* ((bar (qwerty/if (qwerty/nil? err)
-                                                                        nil
-                                                                        (((qwerty/goref deref)
-                                                                          (qwerty/goref raiseV)) err))))
-                                                     (qwerty/. NOP bar))
-                                                   (qwerty/if (qwerty/= b \()
-                                                     (qwerty/do
-                                                      (read_list rdr))
-                                                     (((qwerty/goref deref) (qwerty/goref raiseV))
-                                                      ((qwerty/goref string_append_rune) "unknown rune read " b)))))))))))
-                 (read_listd (qwerty/fn*
-                                 (read read_list)
-                               (qwerty/let* ((readd (qwerty/fn* () (read read read_list))))
-                                 (qwerty/fn* (rdr)
-                                   (qwerty/let* ((read (readd)))
-                                     (qwerty/do
-                                      (read rdr)))))))
-                 (read (readd readd read_listd))
-                 (fd ((qwerty/goref open) "./foo.q"))
-                 (rdr ((qwerty/goref reader) fd)))
-     ((qwerty/goref println) (read rdr)))))
+   (println "test3")
+   (println ((qwerty/goref deref) ((qwerty/goref qwerty.Var) (qwerty/quote a/b))))
+   (println ((qwerty/goref deref) (qwerty/goref foo)))
+   (println (lisp/pr-str (qwerty/quote foo/bar)))
+   ;; (qwerty/let* ((readd (qwerty/fn* (read read_list)
+   ;;                        (qwerty/let*
+   ;;                            ((read_listd (qwerty/fn* () (read_list read read_list))))
+   ;;                          (qwerty/fn*
+   ;;                              (rdr)
+   ;;                            (qwerty/let*
+   ;;                                ((read_list (read_listd)))
+   ;;                              (qwerty/let*
+   ;;                                  ((rdr (qwerty/cast *bufio.Reader rdr)))
+   ;;                                (qwerty/results (b size err) (qwerty/go-method-call rdr ReadRune)
+   ;;                                                (qwerty/do
+   ;;                                                 ((qwerty/goref identity) err)
+   ;;                                                 ((qwerty/goref identity) size)
+   ;;                                                 (qwerty/let* ((bar (qwerty/if (qwerty/nil? err)
+   ;;                                                                      nil
+   ;;                                                                      (panic err))))
+   ;;                                                   (qwerty/. NOP bar))
+   ;;                                                 (qwerty/if (qwerty/= b \()
+   ;;                                                   (qwerty/do
+   ;;                                                    (read_list rdr))
+   ;;                                                   (panic
+   ;;                                                    ((qwerty/goref string_append_rune)
+   ;;                                                     "unknown rune read " b)))))))))))
+   ;;               (read_listd (qwerty/fn*
+   ;;                               (read read_list)
+   ;;                             (qwerty/let* ((readd (qwerty/fn* () (read read read_list))))
+   ;;                               (qwerty/fn* (rdr)
+   ;;                                 (qwerty/let* ((read (readd)))
+   ;;                                   (qwerty/do
+   ;;                                    (read rdr)))))))
+   ;;               (read (readd readd read_listd))
+   ;;               (fd ((qwerty/goref open) "./foo.q"))
+   ;;               (rdr ((qwerty/goref reader) fd)))
+   ;;   ((qwerty/goref println) (read rdr)))
+   ))
 
 (qwerty/def FOO "Hello World")
 
@@ -188,5 +183,5 @@
    ((qwerty/goref println) "fold")
    ((qwerty/goref println) (lisp/fold (qwerty/goref iadd) 0 (qwerty/quote (1 2 3 4 5))))
    (X)
-   (println (lisp/pr-str (qwerty/quote (1 2 3 4))))
+   (println (lisp/pr-str (qwerty/quote (3 4 a b c "x\"y\"\n" (1 2)))))
    (qwerty/. test3)))
