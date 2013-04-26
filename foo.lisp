@@ -20,6 +20,9 @@
                             (qwerty/. fmt.Println x)
                             nil)))
 
+(qwerty/def println
+  (qwerty/fn* (x) ((qwerty/goref println) x)))
+
 (qwerty/godef iadd (qwerty/fn* (x y)
                                (qwerty/let* ((a (qwerty/cast int x))
                                              (b (qwerty/cast int y)))
@@ -124,6 +127,7 @@
 (qwerty/defgofun test3 ()
   (())
   (qwerty/do
+    ((qwerty/goref println) "test3")
     ((qwerty/goref println) ((qwerty/goref deref) ((qwerty/goref qwerty.Var) (qwerty/quote a/b))))
     ((qwerty/goref println) ((qwerty/goref deref) (qwerty/goref foo)))
     ((qwerty/goref println) ((qwerty/goref qwerty.Symbol) "foo/bar"))
@@ -185,4 +189,5 @@
     ((qwerty/goref println) "fold")
     ((qwerty/goref println) (lisp/fold (qwerty/goref iadd) 0 (qwerty/quote (1 2 3 4 5))))
     (X)
+    ((qwerty/goref println) (lisp/pr (qwerty/quote (1 2 3 4))))
     (qwerty/. test3)))

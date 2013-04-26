@@ -839,7 +839,7 @@
         `(qwerty/let* ~bindings
                       ~(reduce
                         (fn [tail [el _]]
-                          `(Cons ~el ~tail))
+                          `(~'Cons ~el ~tail))
                         nil (reverse bindings)))))
      (let [bindings (for [item v]
                       (list (gensym 'quote) (lower `(qwerty/quote ~item))))]
@@ -847,7 +847,7 @@
         `(qwerty/let* ~bindings
                       ~(reduce
                         (fn [tail [el _]]
-                          `(qwerty.Cons ~el ~tail))
+                          `(~'qwerty.Cons ~el ~tail))
                         nil (reverse bindings))))))
    (number? v)
    v

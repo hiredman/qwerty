@@ -9,15 +9,23 @@
   ((interface) (interface))
   (qwerty/if (qwerty/nil? c)
     nil
-    (qwerty/let* ((foo (qwerty/cast *ACons c)))
-                 (qwerty/.- foo car))))
+    (qwerty/results (foo ok) (qwerty/cast *ACons c)
+                    (qwerty/if ok
+                      (qwerty/let* ((foo (qwerty/cast *ACons foo)))
+                                   (qwerty/.- foo car))
+                      (qwerty/let* ((foo (qwerty/cast ACons c)))
+                                   (qwerty/.- foo car))))))
 
 (qwerty/defgofun CdrF (c)
   ((interface) (interface))
   (qwerty/if (qwerty/nil? c)
     nil
-    (qwerty/let* ((foo (qwerty/cast *ACons c)))
-                 (qwerty/.- foo cdr))))
+    (qwerty/results (foo ok) (qwerty/cast *ACons c)
+                    (qwerty/if ok
+                      (qwerty/let* ((foo (qwerty/cast *ACons foo)))
+                                   (qwerty/.- foo cdr))
+                      (qwerty/let* ((foo (qwerty/cast ACons c)))
+                                   (qwerty/.- foo cdr))))))
 
 (qwerty/godef Cons (qwerty/fn* (x y)
                                (qwerty/let* ((c (qwerty/new ACons)))
@@ -76,3 +84,34 @@
   (qwerty/do
     (qwerty/. panic "hashing cons")
     0))
+
+(qwerty/def nop (qwerty/fn* (x) x))
+
+;; this is so gross
+(qwerty/defgomethod String ACons (s) (r)
+  (() (string))
+  (qwerty/let* ((r "(")
+                (lst s))
+               (qwerty/do
+                 (qwerty/labels
+                  (qwerty/goto item)
+                  space
+                  (qwerty/set! r ((qwerty/goref string_append) r " "))
+                  item
+                  (qwerty/let* ((first ((qwerty/goref Car) lst))
+                                (rest ((qwerty/goref Cdr) lst)))
+                               (nop
+                                (qwerty/if (qwerty/= rest nil)
+                                  (qwerty/do
+                                    (qwerty/set! r ((qwerty/goref string_append) r (lisp/pr first)))
+                                    (qwerty/goto end)
+                                    nil)
+                                  (qwerty/do
+                                    (qwerty/set! r ((qwerty/goref string_append) r (lisp/pr first)))
+                                    (qwerty/set! lst rest)
+                                    (qwerty/goto space)
+                                    nil))))
+                  end)
+                 (qwerty/set! r ((qwerty/goref string_append) r ")"))
+                 (qwerty/let* ((r (qwerty/cast string r)))
+                              r))))

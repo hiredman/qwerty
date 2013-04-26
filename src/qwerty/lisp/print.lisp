@@ -1,6 +1,6 @@
 (qwerty/package qwerty)
 (qwerty/import reflect)
-#_(qwerty/import fmt)
+(qwerty/import fmt)
 
 (qwerty/godef pr_dispatch (qwerty/make "map[string]interface{}"))
 
@@ -12,8 +12,22 @@
 
 (qwerty/let* ((k (qwerty/cast string ((qwerty/goref Type) (qwerty/quote foo)))))
              (qwerty/map-update (qwerty/goref pr_dispatch) k
-                                (qwerty/fn* (exp) (qwerty/go-method-call (qwerty/cast *ASymbol exp) String)))
-             nil)
+                                (qwerty/fn* (exp) (qwerty/go-method-call (qwerty/cast *ASymbol exp) String))))
+
+(qwerty/let* ((k (qwerty/cast string ((qwerty/goref Type) (qwerty/quote (nil))))))
+             (qwerty/map-update (qwerty/goref pr_dispatch) k
+                                (qwerty/fn* (exp) (qwerty/go-method-call (qwerty/cast *ACons exp) String))))
+
+(qwerty/let* ((k (qwerty/cast string ((qwerty/goref Type) (qwerty/quote 1)))))
+             (qwerty/map-update (qwerty/goref pr_dispatch) k
+                                (qwerty/fn* (exp)
+                                            (qwerty/. fmt.Sprintf "%v" exp))))
+
+(qwerty/godef string_append
+              (qwerty/fn* (x y)
+                          (qwerty/let* ((a (qwerty/cast string x))
+                                        (b (qwerty/cast string y)))
+                                       (qwerty/+ a b))))
 
 (qwerty/godef PrStr
               (qwerty/fn* (exp)
@@ -22,7 +36,16 @@
                                                        (qwerty/map-entry (qwerty/goref pr_dispatch) k)
                                                        (qwerty/if found
                                                          (value exp)
-                                                         "#<unknown>")))))
+                                                         ((qwerty/goref string_append)
+                                                          "#<unknown "
+                                                          ((qwerty/goref string_append)
+                                                           k
+                                                           ">")))))))
+
+
+
+(qwerty/def lisp/pr
+  (qwerty/fn* (obj) ((qwerty/goref PrStr) obj)))
 
 ;; (qwerty/godef deref (qwerty/fn* (v) (qwerty/go-method-call (qwerty/cast *AVar v) Deref)))
 
@@ -35,4 +58,3 @@
 ;;                                                     nil
 ;;                                                     (Cons (f (Car lst))
 ;;                                                           ((deref mapV) f (Cdr lst))))))))
-
