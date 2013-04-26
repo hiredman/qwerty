@@ -17,32 +17,32 @@
 (qwerty/defgofun DerefF (obj)
   ((interface) (interface))
   (qwerty/let* ((o (qwerty/cast Derefer obj)))
-               (qwerty/go-method-call o Deref)))
+    (qwerty/go-method-call o Deref)))
 
 (qwerty/defgofun Var_ (name)
   ((interface) (interface))
   (qwerty/do
-    (qwerty/let* ((n (qwerty/cast *ASymbol name))
-                  (n (qwerty/cast string (qwerty/.- n name))))
-                 (qwerty/do
-                   (qwerty/results (value found) (qwerty/map-entry (qwerty/goref the_vars) n)
-                                   (qwerty/do
-                                     (qwerty/if found
-                                       value
-                                       (qwerty/let* ((v (qwerty/new AVar)))
-                                                    (qwerty/do
-                                                      (qwerty/set! (qwerty/.- v name) n)
-                                                      (qwerty/map-update (qwerty/goref the_vars) n v)
-                                                      v)))))))))
+   (qwerty/let* ((n (qwerty/cast *ASymbol name))
+                 (n (qwerty/cast string (qwerty/.- n name))))
+     (qwerty/do
+      (qwerty/results (value found) (qwerty/map-entry (qwerty/goref the_vars) n)
+        (qwerty/do
+         (qwerty/if found
+           value
+           (qwerty/let* ((v (qwerty/new AVar)))
+             (qwerty/do
+              (qwerty/set! (qwerty/.- v name) n)
+              (qwerty/map-update (qwerty/goref the_vars) n v)
+              v)))))))))
 
 (qwerty/godef Var (qwerty/fn* (name) (qwerty/. Var_ name)))
 
 (qwerty/defgofun InternVar_ (name value)
   ((interface interface) (interface))
   (qwerty/let* ((v (qwerty/cast *AVar (qwerty/. Var_ name))))
-               (qwerty/do
-                 (qwerty/set! (qwerty/.- v value) value)
-                 v)))
+    (qwerty/do
+     (qwerty/set! (qwerty/.- v value) value)
+     v)))
 
 (qwerty/godef InternVar (qwerty/fn* (name value) (qwerty/. InternVar_ name value)))
 
@@ -50,7 +50,7 @@
   ((interface interface) (interface))
   (qwerty/let* ((a (qwerty/cast string x))
                 (b (qwerty/cast string y)))
-               (qwerty/+ a b)))
+    (qwerty/+ a b)))
 
 (qwerty/defgomethod String AVar (s) (r)
   (() (string))

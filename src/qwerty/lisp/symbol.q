@@ -9,10 +9,10 @@
   (qwerty/let* ((n (qwerty/cast string name))
                 (s (qwerty/new ASymbol))
                 (h (qwerty/cast int (qwerty/. Hash n))))
-               (qwerty/do
-                 (qwerty/set! (qwerty/.- s name) n)
-                 (qwerty/set! (qwerty/.- s hash) h)
-                 s)))
+    (qwerty/do
+     (qwerty/set! (qwerty/.- s name) n)
+     (qwerty/set! (qwerty/.- s hash) h)
+     s)))
 
 (qwerty/godef Symbol (qwerty/fn* (name) (qwerty/. Symbol_ name)))
 
