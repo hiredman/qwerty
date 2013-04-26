@@ -283,9 +283,6 @@
          down-env down-env]
     (let [[new-form new-up-env new-down-env :as r] (f form up-env down-env)
           _ (assert (= 3 (count r)))
-          new-form (if (instance? clojure.lang.IMeta new-form)
-                     (with-meta new-form (meta form))
-                     new-form)
           x form]
       (if (= new-form form)
         (let [[new-up-env new-down-env' new-children]
@@ -298,6 +295,10 @@
                    [new-up-env down-env (conj children new-form)]))
                [new-up-env new-down-env []]
                (children-of new-form))]
-          [(make new-form (seq new-children)) new-up-env down-env])
+          (let [new-form (make new-form (seq new-children))
+                new-form (if (instance? clojure.lang.IMeta new-form)
+                           (with-meta new-form (meta form))
+                           new-form)]
+            [new-form new-up-env down-env]))
         (recur new-form new-up-env new-down-env)))))
 ;; needs to return an up env and a down env

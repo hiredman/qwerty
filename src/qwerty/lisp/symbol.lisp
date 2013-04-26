@@ -4,8 +4,6 @@
                name string
                hash int)
 
-
-
 (qwerty/defgofun Symbol_ (name)
   ((interface) (interface))
   (qwerty/let* ((n (qwerty/cast string name))
@@ -20,7 +18,7 @@
 
 (qwerty/. InternVar_
           (qwerty/. Symbol_ "qwerty/symbol")
-          (qwerty/fn* (name) (Symbol name)))
+          (qwerty/fn* (name) ((qwerty/goref Symbol) name)))
 
 (qwerty/defgomethod String ASymbol (s) (r)
   (() (string))

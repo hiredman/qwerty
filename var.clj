@@ -24,7 +24,7 @@
     up-env
     down-env]
    (contains? @global-env s)
-   (let [v (with-meta (gensym 'v) {:var true})]
+   (let [v (with-meta (gensym (munge s)) {:var true})]
      [(if (= *package* 'qwerty)
         `(qwerty/. ~'DerefF ~v)
         `(qwerty/. ~'qwerty.DerefF ~v))
@@ -48,7 +48,9 @@
 (defmethod varize-expression-seq 'qwerty/set! [exp up-env down-env] [exp up-env down-env])
 (defmethod varize-expression-seq 'qwerty/goref [exp up-env down-env] [exp up-env down-env])
 (defmethod varize-expression-seq 'qwerty/go-method-call [exp up-env down-env] [exp up-env down-env])
-(defmethod varize-expression-seq 'qwerty/def [exp up-env down-env] [exp up-env down-env])
+(defmethod varize-expression-seq 'qwerty/def [[_ n v :as exp] up-env down-env]
+  (swap! global-env conj n)
+  [exp up-env down-env])
 (defmethod varize-expression-seq 'qwerty/test [exp up-env down-env] [exp up-env down-env])
 (defmethod varize-expression-seq 'qwerty/goto [exp up-env down-env] [exp up-env down-env])
 (defmethod varize-expression-seq 'qwerty/definterface [exp up-env down-env] [exp up-env down-env])
@@ -80,7 +82,6 @@
 (defmethod varize-expression-seq 'qwerty/defgomethod [[_ name type args returns types body :as exp] up-env down-env]
   [exp up-env (update-in down-env [:env] (comp set into) args)])
 (defmethod varize-expression-seq 'qwerty/godef [[_ n v :as exp] up-env down-env]
-  (swap! global-env conj n)
   [exp up-env down-env])
 (defmethod varize-expression-seq 'qwerty/let* [[_ bindings body] up-env down-env]
   (let [{:keys [bindings up-env down-env]}

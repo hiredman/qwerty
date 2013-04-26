@@ -519,6 +519,11 @@
       `(qwerty/do
          ~(lower lv)
          (qwerty/set! ~f nil)))
+     (= 'qwerty/goto (first lv))
+     (lower
+      `(qwerty/do
+         (qwerty/set! ~f nil)
+         ~lv))
      (= 'qwerty/results (first lv))
      (let [[_ values app body] lv]
        (lower
@@ -913,7 +918,8 @@
   (if (= :return *context*)
     (print "return"))
   (print " '")
-  (print s)
+  (print (let [x (pr-str (str s))]
+           (subs x 1 (dec (count x)))))
   (print "' ")
   (if (= :return *context*)
     (println)))

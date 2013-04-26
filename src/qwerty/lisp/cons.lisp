@@ -35,6 +35,9 @@
                                       0
                                       (qwerty/. iadd 1 ((qwerty/goref ListCount) ((qwerty/goref Cdr) lst))))))
 
+(qwerty/def cons
+  (qwerty/fn* (a b) ((qwerty/goref Cons) a b)))
+
 (qwerty/godef deref (qwerty/fn* (v) (qwerty/go-method-call (qwerty/cast *AVar v) Deref)))
 
 (qwerty/godef symbol (qwerty/fn* (n) (qwerty/. Symbol_ n)))
@@ -64,9 +67,12 @@
                 init)))
 
 
+(qwerty/def lisp/reverse
+  (qwerty/fn* (lst) (lisp/fold cons nil lst)))
+
+
 (qwerty/defgomethod HashCode ACons (s) (r)
   (() (interface))
   (qwerty/do
     (qwerty/. panic "hashing cons")
     0))
-
