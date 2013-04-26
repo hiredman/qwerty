@@ -519,11 +519,11 @@
       `(qwerty/do
          ~(lower lv)
          (qwerty/set! ~f nil)))
-     (= 'qwerty/goto (first lv))
-     (lower
-      `(qwerty/do
-         (qwerty/set! ~f nil)
-         ~lv))
+     ;; (= 'qwerty/goto (first lv))
+     ;; (lower
+     ;;  `(qwerty/do
+     ;;     (qwerty/set! ~f nil)
+     ;;     ~lv))
      (= 'qwerty/results (first lv))
      (let [[_ values app body] lv]
        (lower
@@ -1435,6 +1435,24 @@
       form
       (recur nf))))
 
+
+(def init-n (atom -1))
+
+
+(def init-name (gensym 'init))
+
+(defn init-fn-name []
+  (swap! init-n inc)
+  (symbol (str init-name @init-n)))
+
+(defn init-fun []
+  (lower
+   `(qwerty/defgofun ~'init ()
+      (())
+      (qwerty/do
+        ~@(for [n (range (inc @init-n))]
+            `(qwerty/. ~(symbol (str init-name n))))))))
+
 (defn top-level-init [[op & exprs]]
   (if (= 'qwerty/do op)
     (let [decls (filter #(or (decl? %)
@@ -1454,7 +1472,7 @@
       `(qwerty/do
          ~@decls
          ~@(when (seq effects)
-             [`(qwerty/defgofun ~'init ()
+             [`(qwerty/defgofun ~(init-fn-name) ()
                  (())
                  (qwerty/do
                    ~@effects))])))
@@ -1511,6 +1529,7 @@
                      (go m)))
             (println)
             (recur (read *in* false eof))))
+        (go (init-fun))
         (finally
           (with-open [o (io/writer "compilation-env")]
             (binding [*out* o]

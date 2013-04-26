@@ -28,8 +28,7 @@
                    (qwerty/results (value found) (qwerty/map-entry (qwerty/goref the_vars) n)
                                    (qwerty/do
                                      (qwerty/if found
-                                       (qwerty/do
-                                         value)
+                                       value
                                        (qwerty/let* ((v (qwerty/new AVar)))
                                                     (qwerty/do
                                                       (qwerty/set! (qwerty/.- v name) n)

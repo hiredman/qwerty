@@ -31,3 +31,6 @@ clean:
 	rm -rf ${stdlibgofiles}
 	rm -rf ${stdlibenvfiles}
 	rm -rf compilation-env
+	rm -rf pkg
+	rm -rf foo
+	rm -rf repl
