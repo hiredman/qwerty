@@ -818,6 +818,13 @@
 (defmethod lower-seq 'qwerty/goref [exp]
   exp)
 
+(defmethod lower-seq 'qwerty/defer [[_ v]]
+  (if (symbol? v)
+    `(qwerty/defer ~v)
+    (let [x (gensym 'defer)]
+      (lower
+       `(qwerty/let* ((~x ~(lower v))) (qwerty/defer ~x))))))
+
 (defmethod lower-seq 'qwerty/def [[_ n v]]
   (swap! global-env conj n)
   (lower
@@ -1211,6 +1218,9 @@
 (defmethod go-seq 'qwerty/go [[_  fun]]
   (println "go" (str "(" fun ".(" (fn-interface) ")).Invoke0_1()")))
 
+(defmethod go-seq 'qwerty/defer [[_  fun]]
+  (println "defer" (str "(" fun ".(" (fn-interface) ")).Invoke0_1()")))
+
 (defmethod go-seq 'qwerty/test [[_ condition label]]
   (println "if" (str "!(" condition ".(bool))") "{ goto" (str "L" label) "}"))
 
@@ -1425,6 +1435,7 @@
 (defmethod raise-locals-seq 'qwerty/godef [exp up-env down-env] [exp up-env down-env])
 (defmethod raise-locals-seq 'qwerty/nth* [exp up-env down-env] [exp up-env down-env])
 (defmethod raise-locals-seq 'qwerty/goref [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/defer [exp up-env down-env] [exp up-env down-env])
 
 (defn raise-locals-out-of-labels [form seen]
   (first (expand form {} seen raise-locals)))

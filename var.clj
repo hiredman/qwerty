@@ -67,6 +67,7 @@
 (defmethod varize-expression-seq 'qwerty/go [exp up-env down-env] [exp up-env down-env])
 (defmethod varize-expression-seq 'qwerty/go-> [exp up-env down-env] [exp up-env down-env])
 (defmethod varize-expression-seq 'qwerty/local [exp up-env down-env] [exp up-env down-env])
+(defmethod varize-expression-seq 'qwerty/defer [exp up-env down-env] [exp up-env down-env])
 (defmethod varize-expression-seq 'qwerty/go<- [[_ [result channel] body :as exp] up-env down-env]
   [exp up-env (update-in down-env [:env] conj result)])
 (defmethod varize-expression-seq 'qwerty/results [[_ values app body] up-env down-env]

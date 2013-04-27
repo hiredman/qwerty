@@ -178,6 +178,9 @@
 (defmethod α-convert-seq 'qwerty/def [[_ n v] env]
   `(qwerty/def ~n ~(α-convert v env)))
 
+(defmethod α-convert-seq 'qwerty/defer [[_ v] env]
+  `(qwerty/defer ~(α-convert v env)))
+
 (defmethod α-convert-seq 'qwerty/goref [[_ v] env]
   `(qwerty/goref ~v))
 

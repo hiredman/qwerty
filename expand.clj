@@ -265,6 +265,11 @@
   (assert (= 2 (count new-children)))
   `(qwerty/map-entry ~@new-children))
 
+(defmethod children-of-seq 'qwerty/defer [[_ a]] (list a))
+(defmethod make-seq 'qwerty/defer [[_ v] new-children]
+  (assert (= 1 (count new-children)))
+  `(qwerty/defer ~@new-children))
+
 (defmethod children-of-seq :default [exp]
   (assert (not (and (symbol? (first exp))
                     (= "qwerty" (namespace (first exp)))))
