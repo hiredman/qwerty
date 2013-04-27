@@ -151,6 +151,14 @@
   `(qwerty/nth* ~(α-convert a env)
                 ~(α-convert b env)))
 
+(defmethod α-convert-seq 'qwerty/< [[_ a b] env]
+  `(qwerty/< ~(α-convert a env)
+             ~(α-convert b env)))
+
+(defmethod α-convert-seq 'qwerty/aget [[_ a b] env]
+  `(qwerty/aget ~(α-convert a env)
+                ~(α-convert b env)))
+
 (defmethod α-convert-seq 'qwerty/go-> [[_ [value channel] body] env]
   `(qwerty/go-> (~(α-convert value env)
                  ~(α-convert channel env))
@@ -183,6 +191,9 @@
 
 (defmethod α-convert-seq 'qwerty/goref [[_ v] env]
   `(qwerty/goref ~v))
+
+(defmethod α-convert-seq 'qwerty/comment [exp env]
+  exp)
 
 (defmethod α-convert-seq :default [exp env]
   (assert (not (and (symbol? (first exp))

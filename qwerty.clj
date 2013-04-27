@@ -1505,6 +1505,8 @@
     (binding [*out* *err*]
       (prn e))))
 
+(def varize? (atom true))
+
 (let [eof (Object.)]
   (with-open [ir (if (System/getenv "IR")
                    (io/writer "ir.q")
@@ -1522,7 +1524,11 @@
                  (println "import " (pr-str "qwerty/lisp"))))
              (and (seq? form) (= (first form) 'qwerty/import))
              (println "import " (pr-str (str (second form))))
-             :else (let [[new-form up-env down-env] (varize form {} {})
+             (and (seq? form) (= (first form) 'qwerty/varize))
+             (reset! varize? (second form))
+             :else (let [[new-form up-env down-env] (if @varize?
+                                                      (varize form {} {})
+                                                      [form {} {}])
                          new-form (if (seq (:vars up-env))
                                     `(qwerty/let* ~(for [[k v] (:vars up-env)]
                                                      (list k (if (= *package* 'qwerty)

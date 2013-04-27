@@ -1,10 +1,11 @@
 (qwerty/package main)
+(qwerty/varize false)
 (qwerty/do
  (qwerty/do
   (qwerty/struct LispReader)
   (qwerty/defgofun
    InitLispReader
-   (G__484)
+   (G__516)
    ((*LispReader) ())
    (qwerty/do))
   (qwerty/do
@@ -139,40 +140,40 @@
    (() ())
    (qwerty/do
     (qwerty/set!
-     (qwerty/goref (qwerty/array-access))
+     (qwerty/goref (qwerty/aget (qwerty/goref macros) "\""))
      (qwerty/. NewStringReader))
     (qwerty/set!
-     (qwerty/goref (qwerty/array-access))
+     (qwerty/goref (qwerty/aget (qwerty/goref macros) ";"))
      (qwerty/. NewCommentReader))
     (qwerty/set!
-     (qwerty/goref (qwerty/array-access))
+     (qwerty/goref (qwerty/aget (qwerty/goref macros) "\\'"))
      (qwerty/. NewWrappingReader (qwerty/goref QUOTE)))
     (qwerty/set!
-     (qwerty/goref (qwerty/array-access))
+     (qwerty/goref (qwerty/aget (qwerty/goref macros) "@"))
      (qwerty/. NewWrappingReader (qwerty/goref DEREF)))
     (qwerty/set!
-     (qwerty/goref (qwerty/array-access))
+     (qwerty/goref (qwerty/aget (qwerty/goref macros) "("))
      (qwerty/. NewListReader))
     (qwerty/set!
-     (qwerty/goref (qwerty/array-access))
+     (qwerty/goref (qwerty/aget (qwerty/goref macros) ")"))
      (qwerty/. NewUnmatchedDelimiterReader))
     (qwerty/set!
-     (qwerty/goref (qwerty/array-access))
+     (qwerty/goref (qwerty/aget (qwerty/goref macros) "\\\\"))
      (qwerty/. NewCharacterReader))
     (qwerty/set!
-     (qwerty/goref (qwerty/array-access))
+     (qwerty/goref (qwerty/aget (qwerty/goref macros) "#"))
      (qwerty/. NewDispatchReader))
     (qwerty/set!
-     (qwerty/goref (qwerty/array-access))
+     (qwerty/goref (qwerty/aget (qwerty/goref dispatchMacros) "\\'"))
      (qwerty/. NewVarReader))
     (qwerty/set!
-     (qwerty/goref (qwerty/array-access))
+     (qwerty/goref (qwerty/aget (qwerty/goref dispatchMacros) "\""))
      (qwerty/. NewRegexReader))
     (qwerty/set!
-     (qwerty/goref (qwerty/array-access))
+     (qwerty/goref (qwerty/aget (qwerty/goref dispatchMacros) "<"))
      (qwerty/. NewUnreadableReader))
     (qwerty/set!
-     (qwerty/goref (qwerty/array-access))
+     (qwerty/goref (qwerty/aget (qwerty/goref dispatchMacros) "_"))
      (qwerty/. NewDiscardReader))))
   (qwerty/defgofun
    LispReader_isWhitespace
@@ -180,7 +181,7 @@
    (() (bool))
    (qwerty/do
     (qwerty/do
-     (qwerty/comment "return" (clojure.core/str user/cu))
+     (qwerty/comment "return Character.isWhitespace(ch) || ch == ',';")
      (qwerty/let*
       ((a__417__auto__
         (qwerty/. Character_isWhitespace (qwerty/goref ch))))
@@ -194,11 +195,11 @@
    (qwerty/struct ReaderException line Int column Int)
    (qwerty/defgofun
     InitReaderException
-    (G__485)
+    (G__517)
     ((*ReaderException) ())
     (qwerty/do
-     (qwerty/set! (qwerty/.- G__485 line) (qwerty/do))
-     (qwerty/set! (qwerty/.- G__485 column) (qwerty/do))))
+     (qwerty/set! (qwerty/.- G__517 line) (qwerty/do))
+     (qwerty/set! (qwerty/.- G__517 column) (qwerty/do))))
    (qwerty/defgofun
     NewReaderException
     ()
@@ -211,86 +212,264 @@
    LispReader_read1
    (r)
    (() (int))
-   (qwerty/do (qwerty/try)))
+   (qwerty/do
+    (qwerty/do
+     (qwerty/comment "try")
+     (qwerty/defer (qwerty/fn* ()))
+     (qwerty/do
+      (qwerty/do
+       (qwerty/comment "return r.read();")
+       (qwerty/go-method-call r read))))))
   (qwerty/defgofun
    LispReader_read
    (r eofIsError eofValue isRecursive)
    (() (Object))
-   (qwerty/do (qwerty/if) (qwerty/try)))
+   (qwerty/do
+    (qwerty/if)
+    (qwerty/do
+     (qwerty/comment "try")
+     (qwerty/defer (qwerty/fn* ()))
+     (qwerty/do
+      (qwerty/do
+       (qwerty/labels
+        start
+        (qwerty/test (qwerty/do) user/continue)
+        (qwerty/goto user/end)
+        continue
+        (qwerty/do
+         (qwerty/do
+          (qwerty/do
+           (qwerty/do
+            (qwerty/local ch Int)
+            (qwerty/set!
+             ch
+             (qwerty/go-method-call (qwerty/do) read1 r))))
+          (qwerty/labels
+           start
+           (qwerty/test
+            (qwerty/go-method-call (qwerty/do) isWhitespace ch)
+            user/continue)
+           (qwerty/goto user/end)
+           continue
+           (qwerty/do
+            (qwerty/set!
+             (qwerty/goref ch)
+             (qwerty/go-method-call (qwerty/do) read1 r)))
+           end)
+          (qwerty/if)
+          (qwerty/if)
+          (qwerty/do
+           (qwerty/do
+            (qwerty/local macroFn IFn)
+            (qwerty/set!
+             macroFn
+             (qwerty/go-method-call (qwerty/do) getMacro ch))))
+          (qwerty/if)
+          (qwerty/if)
+          (qwerty/do
+           (qwerty/do
+            (qwerty/local token String)
+            (qwerty/set!
+             token
+             (qwerty/go-method-call
+              (qwerty/do)
+              readToken
+              r
+              (qwerty/cast Char ch)))))
+          (qwerty/if)
+          (qwerty/do
+           (qwerty/comment "return interpretToken(token);")
+           (qwerty/go-method-call (qwerty/do) interpretToken token))))
+        end))))))
   (qwerty/defgofun
    LispReader_readToken
    (r initch)
    (() (String))
    (qwerty/do
-    (qwerty/variable)
+    (qwerty/do
+     (qwerty/do
+      (qwerty/local sb StringBuilder)
+      (qwerty/set! sb (qwerty/. NewStringBuilder))))
     (qwerty/go-method-call sb append initch)
-    (qwerty/for)))
+    (qwerty/do
+     (qwerty/labels
+      start
+      (qwerty/test (qwerty/do) user/continue)
+      (qwerty/goto user/end)
+      continue
+      (qwerty/do
+       (qwerty/do
+        (qwerty/do
+         (qwerty/do
+          (qwerty/local ch Int)
+          (qwerty/set!
+           ch
+           (qwerty/go-method-call (qwerty/do) read1 r))))
+        (qwerty/if)
+        (qwerty/go-method-call sb append (qwerty/cast Char ch))))
+      end))))
   (qwerty/defgofun
    LispReader_readNumber
    (r initch)
    (() (Object))
    (qwerty/do
-    (qwerty/variable)
-    (qwerty/go-method-call sb append initch)
-    (qwerty/for)
-    (qwerty/variable)
-    (qwerty/variable)
-    (qwerty/if)
     (qwerty/do
-     (qwerty/comment "return" (clojure.core/str user/cu))
-     n)))
+     (qwerty/do
+      (qwerty/local sb StringBuilder)
+      (qwerty/set! sb (qwerty/. NewStringBuilder))))
+    (qwerty/go-method-call sb append initch)
+    (qwerty/do
+     (qwerty/labels
+      start
+      (qwerty/test (qwerty/do) user/continue)
+      (qwerty/goto user/end)
+      continue
+      (qwerty/do
+       (qwerty/do
+        (qwerty/do
+         (qwerty/do
+          (qwerty/local ch Int)
+          (qwerty/set!
+           ch
+           (qwerty/go-method-call (qwerty/do) read1 r))))
+        (qwerty/if)
+        (qwerty/go-method-call sb append (qwerty/cast Char ch))))
+      end))
+    (qwerty/do
+     (qwerty/do
+      (qwerty/local s String)
+      (qwerty/set! s (qwerty/go-method-call sb toString))))
+    (qwerty/do
+     (qwerty/do
+      (qwerty/local n Object)
+      (qwerty/set!
+       n
+       (qwerty/go-method-call (qwerty/do) matchNumber s))))
+    (qwerty/if)
+    (qwerty/do (qwerty/comment "return n;") n)))
   (qwerty/defgofun
    LispReader_readUnicodeChar
    (token offset length base)
    (() (int))
    (qwerty/do
     (qwerty/if)
-    (qwerty/variable)
-    (qwerty/for)
+    (qwerty/do (qwerty/do (qwerty/local uc Int) (qwerty/set! uc "0")))
     (qwerty/do
-     (qwerty/comment "return" (clojure.core/str user/cu))
+     (qwerty/do
+      (qwerty/do (qwerty/local i Int) (qwerty/set! i offset)))
+     (qwerty/labels
+      start
+      (qwerty/test
+       (qwerty/< i (qwerty/plus offset length))
+       user/continue)
+      (qwerty/goto user/end)
+      continue
+      (qwerty/do
+       (qwerty/unary)
+       (qwerty/do
+        (qwerty/do
+         (qwerty/do
+          (qwerty/local d Int)
+          (qwerty/set!
+           d
+           (qwerty/.
+            Character_digit
+            (qwerty/go-method-call token charAt i)
+            (qwerty/goref base)))))
+        (qwerty/if)
+        (qwerty/set!
+         (qwerty/goref uc)
+         (qwerty/plus (qwerty/times uc base) d))))
+      end))
+    (qwerty/do
+     (qwerty/comment "return (char) uc;")
      (qwerty/cast Char uc))))
   (qwerty/defgofun
    LispReader_readUnicodeChar
    (r initch base length exact)
    (() (int))
    (qwerty/do
-    (qwerty/variable)
-    (qwerty/if)
-    (qwerty/variable)
-    (qwerty/for)
-    (qwerty/if)
     (qwerty/do
-     (qwerty/comment "return" (clojure.core/str user/cu))
-     uc)))
+     (qwerty/do
+      (qwerty/local uc Int)
+      (qwerty/set!
+       uc
+       (qwerty/.
+        Character_digit
+        (qwerty/goref initch)
+        (qwerty/goref base)))))
+    (qwerty/if)
+    (qwerty/do (qwerty/do (qwerty/local i Int) (qwerty/set! i "1")))
+    (qwerty/do
+     (qwerty/labels
+      start
+      (qwerty/test (qwerty/< i length) user/continue)
+      (qwerty/goto user/end)
+      continue
+      (qwerty/do
+       (qwerty/unary)
+       (qwerty/do
+        (qwerty/do
+         (qwerty/do
+          (qwerty/local ch Int)
+          (qwerty/set!
+           ch
+           (qwerty/go-method-call (qwerty/do) read1 r))))
+        (qwerty/if)
+        (qwerty/do
+         (qwerty/do
+          (qwerty/local d Int)
+          (qwerty/set!
+           d
+           (qwerty/.
+            Character_digit
+            (qwerty/goref ch)
+            (qwerty/goref base)))))
+        (qwerty/if)
+        (qwerty/set!
+         (qwerty/goref uc)
+         (qwerty/plus (qwerty/times uc base) d))))
+      end))
+    (qwerty/if)
+    (qwerty/do (qwerty/comment "return uc;") uc)))
   (qwerty/defgofun
    LispReader_interpretToken
    (s)
    (() (Object))
    (qwerty/do
     (qwerty/if)
-    (qwerty/variable)
+    (qwerty/do
+     (qwerty/do (qwerty/local ret Object) (qwerty/set! ret nil)))
     (qwerty/set!
      (qwerty/goref ret)
      (qwerty/go-method-call (qwerty/do) matchSymbol s))
     (qwerty/if)
-    (qwerty/throw)))
+    (qwert/.
+     user/panic
+     (qwerty/go-method-call
+      Util
+      runtimeException
+      (qwerty/plus "Invalid token: " s)))))
   (qwerty/defgofun
    LispReader_matchSymbol
    (s)
    (() (Object))
    (qwerty/do
-    (qwerty/variable)
-    (qwerty/if)
     (qwerty/do
-     (qwerty/comment "return" (clojure.core/str user/cu))
-     nil)))
+     (qwerty/do
+      (qwerty/local m Matcher)
+      (qwerty/set! m (qwerty/go-method-call symbolPat matcher s))))
+    (qwerty/if)
+    (qwerty/do (qwerty/comment "return null;") nil)))
   (qwerty/defgofun
    LispReader_matchNumber
    (s)
    (() (Object))
    (qwerty/do
-    (qwerty/variable)
+    (qwerty/do
+     (qwerty/do
+      (qwerty/local m Matcher)
+      (qwerty/set! m (qwerty/go-method-call intPat matcher s))))
     (qwerty/if)
     (qwerty/set!
      (qwerty/goref m)
@@ -300,47 +479,61 @@
      (qwerty/goref m)
      (qwerty/go-method-call ratioPat matcher s))
     (qwerty/if)
-    (qwerty/do
-     (qwerty/comment "return" (clojure.core/str user/cu))
-     nil)))
+    (qwerty/do (qwerty/comment "return null;") nil)))
   (qwerty/defgofun
    LispReader_getMacro
    (ch)
    (() (IFn))
    (qwerty/do
     (qwerty/if)
-    (qwerty/do
-     (qwerty/comment "return" (clojure.core/str user/cu))
-     nil)))
+    (qwerty/do (qwerty/comment "return null;") nil)))
   (qwerty/defgofun
    LispReader_isMacro
    (ch)
    (() (bool))
    (qwerty/do
     (qwerty/do
-     (qwerty/comment "return" (clojure.core/str user/cu))
-     (qwerty/and
-      (qwerty/less ch (qwerty/.- macros length))
-      (qwerty/notEquals (qwerty/array-access) nil)))))
+     (qwerty/comment
+      "return (ch < macros.length && macros[ch] != null);")
+     (qwerty/if
+      (qwerty/< ch (qwerty/.- macros length))
+      (qwerty/if
+       (qwerty/if
+        (qwerty/= (qwerty/aget (qwerty/goref macros) ch) nil)
+        false
+        true)
+       true
+       false)
+      false))))
   (qwerty/defgofun
    LispReader_isTerminatingMacro
    (ch)
    (() (bool))
    (qwerty/do
     (qwerty/do
-     (qwerty/comment "return" (clojure.core/str user/cu))
-     (qwerty/and
-      (qwerty/and
-       (qwerty/and
-        (qwerty/notEquals ch "#")
-        (qwerty/notEquals ch "\\'"))
-       (qwerty/notEquals ch "%"))
-      (qwerty/go-method-call (qwerty/do) isMacro ch)))))
+     (qwerty/comment
+      "return (ch != '#' && ch != '\\'' && ch != '%' && isMacro(ch));")
+     (qwerty/if
+      (qwerty/if
+       (qwerty/if
+        (qwerty/if (qwerty/= ch "#") false true)
+        (qwerty/if
+         (qwerty/if (qwerty/= ch "\\'") false true)
+         true
+         false)
+        false)
+       (qwerty/if (qwerty/if (qwerty/= ch "%") false true) true false)
+       false)
+      (qwerty/if
+       (qwerty/go-method-call (qwerty/do) isMacro ch)
+       true
+       false)
+      false))))
   (qwerty/do
    (qwerty/struct RegexReader)
    (qwerty/defgofun
     InitRegexReader
-    (G__486)
+    (G__518)
     ((*RegexReader) ())
     (qwerty/do))
    (qwerty/do
@@ -351,7 +544,7 @@
    (qwerty/struct StringReader)
    (qwerty/defgofun
     InitStringReader
-    (G__487)
+    (G__519)
     ((*StringReader) ())
     (qwerty/do))
    (user/method-decl))
@@ -359,7 +552,7 @@
    (qwerty/struct CommentReader)
    (qwerty/defgofun
     InitCommentReader
-    (G__488)
+    (G__520)
     ((*CommentReader) ())
     (qwerty/do))
    (user/method-decl))
@@ -367,7 +560,7 @@
    (qwerty/struct DiscardReader)
    (qwerty/defgofun
     InitDiscardReader
-    (G__489)
+    (G__521)
     ((*DiscardReader) ())
     (qwerty/do))
    (user/method-decl))
@@ -375,9 +568,9 @@
    (qwerty/struct WrappingReader sym Symbol)
    (qwerty/defgofun
     InitWrappingReader
-    (G__490)
+    (G__522)
     ((*WrappingReader) ())
-    (qwerty/do (qwerty/set! (qwerty/.- G__490 sym) (qwerty/do))))
+    (qwerty/do (qwerty/set! (qwerty/.- G__522 sym) (qwerty/do))))
    (qwerty/defgofun
     NewWrappingReader
     ()
@@ -391,11 +584,11 @@
    (qwerty/struct DeprecatedWrappingReader sym Symbol macro String)
    (qwerty/defgofun
     InitDeprecatedWrappingReader
-    (G__491)
+    (G__523)
     ((*DeprecatedWrappingReader) ())
     (qwerty/do
-     (qwerty/set! (qwerty/.- G__491 sym) (qwerty/do))
-     (qwerty/set! (qwerty/.- G__491 macro) (qwerty/do))))
+     (qwerty/set! (qwerty/.- G__523 sym) (qwerty/do))
+     (qwerty/set! (qwerty/.- G__523 macro) (qwerty/do))))
    (qwerty/defgofun
     NewDeprecatedWrappingReader
     ()
@@ -409,7 +602,7 @@
    (qwerty/struct VarReader)
    (qwerty/defgofun
     InitVarReader
-    (G__492)
+    (G__524)
     ((*VarReader) ())
     (qwerty/do))
    (user/method-decl))
@@ -417,7 +610,7 @@
    (qwerty/struct DispatchReader)
    (qwerty/defgofun
     InitDispatchReader
-    (G__493)
+    (G__525)
     ((*DispatchReader) ())
     (qwerty/do))
    (user/method-decl))
@@ -425,7 +618,7 @@
    (qwerty/struct CharacterReader)
    (qwerty/defgofun
     InitCharacterReader
-    (G__494)
+    (G__526)
     ((*CharacterReader) ())
     (qwerty/do))
    (user/method-decl))
@@ -433,7 +626,7 @@
    (qwerty/struct ListReader)
    (qwerty/defgofun
     InitListReader
-    (G__495)
+    (G__527)
     ((*ListReader) ())
     (qwerty/do))
    (user/method-decl))
@@ -441,7 +634,7 @@
    (qwerty/struct EvalReader)
    (qwerty/defgofun
     InitEvalReader
-    (G__496)
+    (G__528)
     ((*EvalReader) ())
     (qwerty/do))
    (user/method-decl))
@@ -449,7 +642,7 @@
    (qwerty/struct VectorReader)
    (qwerty/defgofun
     InitVectorReader
-    (G__497)
+    (G__529)
     ((*VectorReader) ())
     (qwerty/do))
    (user/method-decl))
@@ -457,7 +650,7 @@
    (qwerty/struct MapReader)
    (qwerty/defgofun
     InitMapReader
-    (G__498)
+    (G__530)
     ((*MapReader) ())
     (qwerty/do))
    (user/method-decl))
@@ -465,7 +658,7 @@
    (qwerty/struct SetReader)
    (qwerty/defgofun
     InitSetReader
-    (G__499)
+    (G__531)
     ((*SetReader) ())
     (qwerty/do))
    (user/method-decl))
@@ -473,7 +666,7 @@
    (qwerty/struct UnmatchedDelimiterReader)
    (qwerty/defgofun
     InitUnmatchedDelimiterReader
-    (G__500)
+    (G__532)
     ((*UnmatchedDelimiterReader) ())
     (qwerty/do))
    (user/method-decl))
@@ -481,7 +674,7 @@
    (qwerty/struct UnreadableReader)
    (qwerty/defgofun
     InitUnreadableReader
-    (G__501)
+    (G__533)
     ((*UnreadableReader) ())
     (qwerty/do))
    (user/method-decl))
@@ -490,17 +683,63 @@
    (delim r isRecursive)
    (() (List))
    (qwerty/do
-    (qwerty/variable)
-    (qwerty/variable)
-    (qwerty/for)
     (qwerty/do
-     (qwerty/comment "return" (clojure.core/str user/cu))
-     a)))
+     (qwerty/do
+      (qwerty/local firstline Int)
+      (qwerty/set!
+       firstline
+       (qwerty/if
+        (user/foo)
+        (qwerty/go-method-call
+         (qwerty/cast LineNumberingPushbackReader r)
+         getLineNumber)
+        (qwerty/unary)))))
+    (qwerty/do
+     (qwerty/do
+      (qwerty/local a ArrayList)
+      (qwerty/set! a (qwerty/. NewArrayList))))
+    (qwerty/do
+     (qwerty/labels
+      start
+      (qwerty/test (qwerty/do) user/continue)
+      (qwerty/goto user/end)
+      continue
+      (qwerty/do
+       (qwerty/do
+        (qwerty/do
+         (qwerty/do
+          (qwerty/local ch Int)
+          (qwerty/set!
+           ch
+           (qwerty/go-method-call (qwerty/do) read1 r))))
+        (qwerty/labels
+         start
+         (qwerty/test
+          (qwerty/go-method-call (qwerty/do) isWhitespace ch)
+          user/continue)
+         (qwerty/goto user/end)
+         continue
+         (qwerty/do
+          (qwerty/set!
+           (qwerty/goref ch)
+           (qwerty/go-method-call (qwerty/do) read1 r)))
+         end)
+        (qwerty/if)
+        (qwerty/if)
+        (qwerty/do
+         (qwerty/do
+          (qwerty/local macroFn IFn)
+          (qwerty/set!
+           macroFn
+           (qwerty/go-method-call (qwerty/do) getMacro ch))))
+        (qwerty/if)))
+      end))
+    (qwerty/do (qwerty/comment "return a;") a)))
   (qwerty/do
    (qwerty/struct CtorReader)
    (qwerty/defgofun
     InitCtorReader
-    (G__502)
+    (G__534)
     ((*CtorReader) ())
     (qwerty/do))
    (user/method-decl)

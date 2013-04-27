@@ -146,10 +146,24 @@
     (cond
      (= 'qwerty/or op)
      `(qwerty/let* ((a# ~a)) (qwerty/if a# a# ~b))
+     (= 'qwerty/and op)
+     `(qwerty/if ~a
+        (qwerty/if ~b
+          true
+          false)
+        false)
      (= 'qwerty/equals op)
      `(qwerty/= ~a ~b)
+     (= 'qwerty/less op)
+     `(qwerty/< ~a ~b)
+     (= 'qwerty/notEquals op)
+     `(qwerty/if (qwerty/= ~a ~b)
+        false
+        true)
      :else
      `(~op ~a ~b))))
+(defmethod goify japa.parser.ast.expr.UnaryExpr [cu]
+  `(qwerty/unary))
 (defmethod goify japa.parser.ast.expr.CastExpr [cu]
   `(qwerty/cast ~(type-convert (.getType cu)) ~(goify (.getExpr cu))))
 (defmethod goify japa.parser.ast.expr.FieldAccessExpr [cu]
@@ -159,31 +173,68 @@
 (defmethod goify japa.parser.ast.expr.BinaryExpr$Operator [cu]
   (.toString cu))
 (defmethod goify japa.parser.ast.expr.VariableDeclarationExpr [cu]
-  `(qwerty/variable))
+  `(qwerty/do
+     ~@(for [v (.getVars cu)]
+         `(qwerty/do
+            (qwerty/local ~(symbol (.getName (.getId v))) ~(type-convert (.getType cu)))
+            (qwerty/set! ~(symbol (.getName (.getId v))) ~(goify (.getInit v)))))))
 (defmethod goify japa.parser.ast.stmt.BlockStmt [cu]
   `(qwerty/do
      ~@(map goify (.getStmts cu))))
 (defmethod goify japa.parser.ast.stmt.ReturnStmt [cu]
   `(qwerty/do
-     (qwerty/comment "return" (str cu))
+     (qwerty/comment ~(str cu))
      ~(goify (.getExpr cu))))
 (defmethod goify japa.parser.ast.stmt.IfStmt [cu]
   `(qwerty/if))
 (defmethod goify japa.parser.ast.stmt.TryStmt [cu]
-  `(qwerty/try))
+  `(qwerty/do
+     (qwerty/comment "try")
+     (qwerty/defer (qwerty/fn* ()))
+     ~(goify (.getTryBlock cu))))
 (defmethod goify japa.parser.ast.stmt.ForStmt [cu]
-  `(qwerty/for))
+  ;; (binding [*out* *err*]
+  ;;   (println cu))
+  `(qwerty/do
+     ~@(map goify (.getInit cu))
+     (qwerty/labels
+      ~'start
+      (qwerty/test ~(goify (.getCompare cu)) continue)
+      (qwerty/goto end)
+      ~'continue
+      (qwerty/do
+        ~@(map goify (.getUpdate cu))
+        ~(goify (.getBody cu)))
+      ~'end)))
 (defmethod goify japa.parser.ast.stmt.ThrowStmt [cu]
-  `(qwerty/throw))
+  `(qwert/. panic ~(goify (.getExpr cu))))
+(defmethod goify japa.parser.ast.stmt.WhileStmt [cu]
+  `(qwerty/labels
+    ~'start
+    (qwerty/test ~(goify (.getCondition cu)) continue)
+    (qwerty/goto end)
+    ~'continue
+    (qwerty/do
+      ~(goify (.getBody cu)))
+    ~'end))
 (defmethod goify japa.parser.ast.stmt.ExpressionStmt [cu]
   (goify (.getExpression cu)))
 (defmethod goify japa.parser.ast.expr.AssignExpr
   [cu]
   `(qwerty/set! (qwerty/goref ~(goify (.getTarget cu)))
                 ~(goify (.getValue cu))))
+(defmethod goify japa.parser.ast.expr.ConditionalExpr
+  [cu]
+  `(qwerty/if ~(goify (.getCondition cu))
+     ~(goify (.getThenExpr cu))
+     ~(goify (.getElseExpr cu))))
+(defmethod goify japa.parser.ast.expr.InstanceOfExpr
+  [cu]
+  `(foo))
 (defmethod goify japa.parser.ast.expr.ArrayAccessExpr
   [cu]
-  `(qwerty/array-access))
+  `(qwerty/aget (qwerty/goref ~(goify (.getName cu)))
+                ~(goify (.getIndex cu))))
 
 
 
@@ -191,4 +242,5 @@
 (use 'clojure.pprint)
 
 (prn `(qwerty/package ~'main))
+(prn `(qwerty/varize false))
 (pprint (goify (japa.parser.JavaParser/parse System/in)))
