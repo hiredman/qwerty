@@ -198,5 +198,5 @@
 (defmethod α-convert-seq :default [exp env]
   (assert (not (and (symbol? (first exp))
                     (= "qwerty" (namespace (first exp)))))
-          (first exp))
+          exp)
   (with-meta (doall (map #(α-convert % env) exp)) (meta exp)))

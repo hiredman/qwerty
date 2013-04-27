@@ -28,6 +28,11 @@
   (assert (empty? new-children))
   form)
 
+(defmethod children-of java.lang.Boolean [s] ())
+(defmethod make java.lang.Boolean [form new-children]
+  (assert (empty? new-children))
+  form)
+
 (defmethod children-of nil [s] ())
 (defmethod make nil [form new-children]
   (assert (empty? new-children))
@@ -151,6 +156,18 @@
 (defmethod make-seq 'qwerty/* [[_ a b] new-children]
   (assert (= 2 (count new-children)))
   `(qwerty/* ~@new-children))
+
+(defmethod children-of-seq 'qwerty/< [[_ & args]]
+  args)
+(defmethod make-seq 'qwerty/< [[_ a b] new-children]
+  (assert (= 2 (count new-children)))
+  `(qwerty/< ~@new-children))
+
+(defmethod children-of-seq 'qwerty/aget [[_ & args]]
+  args)
+(defmethod make-seq 'qwerty/aget [[_ a b] new-children]
+  (assert (= 2 (count new-children)))
+  `(qwerty/aget ~@new-children))
 
 (defmethod children-of-seq 'qwerty/goderef [[_ v]]
   (list v))

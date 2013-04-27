@@ -522,11 +522,9 @@
       `(qwerty/do
          ~(lower lv)
          (qwerty/set! ~f nil)))
-     ;; (= 'qwerty/goto (first lv))
-     ;; (lower
-     ;;  `(qwerty/do
-     ;;     (qwerty/set! ~f nil)
-     ;;     ~lv))
+     (= 'qwerty/set! (first lv))
+     (lower
+      `(qwerty/set! ~f (qwerty/do ~lv nil)))
      (= 'qwerty/results (first lv))
      (let [[_ values app body] lv]
        (lower
@@ -578,6 +576,26 @@
                             (~b_ ~(lower b)))
                            (qwerty/* ~a_ ~b_))))
     `(qwerty/* ~a ~b)))
+
+(defmethod lower-seq 'qwerty/< [[_ a b]]
+  (if (or (coll? a)
+          (coll? b))
+    (let [a_ (gensym 'a)
+          b_ (gensym 'b)]
+      (lower `(qwerty/let* ((~a_ ~(lower a))
+                            (~b_ ~(lower b)))
+                           (qwerty/< ~a_ ~b_))))
+    `(qwerty/< ~a ~b)))
+
+(defmethod lower-seq 'qwerty/aget [[_ a b]]
+  (if (or (not (symbol? a))
+          (not (symbol? b)))
+    (let [a_ (gensym 'a)
+          b_ (gensym 'b)]
+      (lower `(qwerty/let* ((~a_ ~(lower a))
+                            (~b_ ~(lower b)))
+                           (qwerty/aget ~a_ ~b_))))
+    `(qwerty/aget ~a ~b)))
 
 (defmethod lower-seq 'qwerty/nth* [[_ a b]]
   (if (or (coll? a)
@@ -1084,6 +1102,21 @@
   (if (= :return *context*)
     (println)))
 
+
+(defmethod go-seq 'qwerty/aget [[_ m k]]
+  (if (= :return *context*)
+    (print "return"))
+  (print "" (str (if (and (seq? m)
+                          (= 'qwerty/goref (first m)))
+                   (second m)
+                   (munge m))
+                 "["))
+  (binding [*context* :statement]
+    (go k))
+  (print "]")
+  (if (= :return *context*)
+    (println)))
+
 (defmethod go-seq 'qwerty/go-method-call [[_ target method & args]]
   (if (= :return *context*)
     (print "return"))
@@ -1106,7 +1139,6 @@
     (println)))
 
 (defmethod go-seq 'qwerty/set! [[_ thing value]]
-  (println "/* qwerty/set!" value "*/")
   (binding [*context* :statement]
     (go thing))
   (print " = ")
@@ -1136,6 +1168,13 @@
   (if (= :return *context*)
     (print "return"))
   (print "(" a "+" b ")")
+  (if (= :return *context*)
+    (println)))
+
+(defmethod go-seq 'qwerty/< [[_ a b]]
+  (if (= :return *context*)
+    (print "return"))
+  (print "(" a "<" b ")")
   (if (= :return *context*)
     (println)))
 
@@ -1261,10 +1300,9 @@
   (assert  (and (seq? v)
                 (= 'qwerty/make (first v)))
            (pr-str n v))
-  (print "var" n (second v) "=")
+  (print "var" n (.trim (first (.split (second v) ",")))  "=")
   (go v)
   (println))
-
 
 (defmethod go-seq 'qwerty/map-update [[_ map key value]]
   (binding [*context* :statement]
@@ -1339,6 +1377,21 @@
 (defmethod raise-decls-seq 'qwerty/do [[_ & body]]
   (cons 'qwerty/do (map raise-decls body)))
 
+(defmethod raise-decls-seq 'qwerty/labels [[_ & body]]
+  (let [raised-bindings (for [exp body]
+                          (if (and (seq? exp)
+                                   (= 'qwerty/do (first exp)))
+                            (let [decls (filter decl? (rest exp))
+                                  exps (remove decl? (rest exp))]
+                              {:exp `(qwerty/do ~@exps)
+                               :decls decls})
+                            {:exp exp
+                             :decls []}))]
+    `(qwerty/do
+       ~@(mapcat :decls raised-bindings)
+       (qwerty/labels
+        ~@(map :exp raised-bindings)))))
+
 (defmethod raise-decls-seq :default [exp]
   (doall (map raise-decls exp)))
 
@@ -1369,6 +1422,7 @@
 (defmethod raise-locals java.lang.String [exp up-env down-env] [exp up-env down-env])
 (defmethod raise-locals java.lang.Number [exp up-env down-env] [exp up-env down-env])
 (defmethod raise-locals java.lang.Character [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals java.lang.Boolean [exp up-env down-env] [exp up-env down-env])
 (defmethod raise-locals nil [exp up-env down-env] [exp up-env down-env])
 (defmethod raise-locals-seq 'qwerty/struct [exp up-env down-env] [exp up-env down-env])
 (defmethod raise-locals-seq 'qwerty/definterface [exp up-env down-env] [exp up-env down-env])
@@ -1436,6 +1490,8 @@
 (defmethod raise-locals-seq 'qwerty/nth* [exp up-env down-env] [exp up-env down-env])
 (defmethod raise-locals-seq 'qwerty/goref [exp up-env down-env] [exp up-env down-env])
 (defmethod raise-locals-seq 'qwerty/defer [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/< [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/aget [exp up-env down-env] [exp up-env down-env])
 
 (defn raise-locals-out-of-labels [form seen]
   (first (expand form {} seen raise-locals)))

@@ -72,12 +72,9 @@
 
 (defmethod goify japa.parser.ast.body.FieldDeclaration [field]
   (cons 'qwerty/do
-        (for [v (.getVariables field)
-              x [`(qwerty/local ~(symbol (.getName (.getId v)))
-                                ~(type-convert (.getType field)))
-                 `(qwerty/set! (qwerty/goref ~(symbol (.getName (.getId v))))
-                               ~(goify (.getInit v)))]]
-          x)))
+        (for [v (.getVariables field)]
+          `(qwerty/godef ~(symbol (.getName (.getId v)))
+                         ~(goify (.getInit v))))))
 
 (defmethod goify japa.parser.ast.expr.MethodCallExpr [cu]
   (let [scope (goify (.getScope cu))]
@@ -94,7 +91,7 @@
                               ~@(map goify (.getArgs cu))))))
 (defmethod goify japa.parser.ast.expr.ArrayCreationExpr [cu]
   `(qwerty/make  ~(str "[]" (type-convert (.getType cu))
-                       " "
+                       ", "
                        (apply str
                               (interpose \space (map goify (.getDimensions cu)))))))
 (defmethod goify japa.parser.ast.expr.ObjectCreationExpr [cu]
@@ -106,7 +103,7 @@
                     (map goify (.getArgs cu)))))
 (defmethod goify japa.parser.ast.body.InitializerDeclaration [cu]
   (assert (.isStatic cu))
-  `(qwerty/defgofun init ()
+  `(qwerty/defgofun ~'init ()
      (() ())
      ~(goify (.getBlock cu))))
 (defmethod goify japa.parser.ast.body.MethodDeclaration [cu]
@@ -136,6 +133,8 @@
   (symbol (.getName cu)))
 (defmethod goify japa.parser.ast.expr.StringLiteralExpr [cu]
   (.getValue cu))
+(defmethod goify japa.parser.ast.expr.BooleanLiteralExpr [cu]
+  (.getValue cu))
 (defmethod goify japa.parser.ast.expr.NullLiteralExpr [cu]
   nil)
 (defmethod goify japa.parser.ast.expr.BinaryExpr [cu]
@@ -155,7 +154,17 @@
      (= 'qwerty/equals op)
      `(qwerty/= ~a ~b)
      (= 'qwerty/less op)
-     `(qwerty/< ~a ~b)
+     `(qwerty/let* ((a# (qwerty/cast ~'int ~a))
+                    (b# (qwerty/cast ~'int ~b)))
+                   (qwerty/< a# b#))
+     (= 'qwerty/plus op)
+     `(qwerty/let* ((a# (qwerty/cast ~'int ~a))
+                    (b# (qwerty/cast ~'int ~b)))
+                   (qwerty/+ a# b#))
+     (= 'qwerty/times op)
+     `(qwerty/let* ((a# (qwerty/cast ~'int ~a))
+                    (b# (qwerty/cast ~'int ~b)))
+                   (qwerty/* a# b#))
      (= 'qwerty/notEquals op)
      `(qwerty/if (qwerty/= ~a ~b)
         false
@@ -163,7 +172,20 @@
      :else
      `(~op ~a ~b))))
 (defmethod goify japa.parser.ast.expr.UnaryExpr [cu]
-  `(qwerty/unary))
+  (let [op (goify (.getOperator cu))
+        a (goify (.getExpr cu))
+        op (symbol "qwerty" op)]
+    (cond
+     (= op 'qwerty/preIncrement)
+     `(qwerty/do
+        (qwerty/set! ~a (qwerty/let* ((a# (qwerty/cast ~'int ~a)))
+                                     (qwerty/+ a# 1)))
+        ~a)
+     (= op 'qwerty/negative)
+     `(qwerty/let* ((a# (qwerty/cast ~'int ~a)))
+                   (qwerty/* a# -1))
+     :else
+     `(~op ~a))))
 (defmethod goify japa.parser.ast.expr.CastExpr [cu]
   `(qwerty/cast ~(type-convert (.getType cu)) ~(goify (.getExpr cu))))
 (defmethod goify japa.parser.ast.expr.FieldAccessExpr [cu]
@@ -171,6 +193,8 @@
 (defmethod goify japa.parser.ast.expr.EnclosedExpr [cu]
   (goify (.getInner cu)))
 (defmethod goify japa.parser.ast.expr.BinaryExpr$Operator [cu]
+  (.toString cu))
+(defmethod goify japa.parser.ast.expr.UnaryExpr$Operator [cu]
   (.toString cu))
 (defmethod goify japa.parser.ast.expr.VariableDeclarationExpr [cu]
   `(qwerty/do
@@ -186,7 +210,9 @@
      (qwerty/comment ~(str cu))
      ~(goify (.getExpr cu))))
 (defmethod goify japa.parser.ast.stmt.IfStmt [cu]
-  `(qwerty/if))
+  `(qwerty/if ~(goify (.getCondition cu))
+     ~(goify (.getThenStmt cu))
+     ~(goify (.getElseStmt cu))))
 (defmethod goify japa.parser.ast.stmt.TryStmt [cu]
   `(qwerty/do
      (qwerty/comment "try")
@@ -199,20 +225,20 @@
      ~@(map goify (.getInit cu))
      (qwerty/labels
       ~'start
-      (qwerty/test ~(goify (.getCompare cu)) continue)
-      (qwerty/goto end)
+      (qwerty/test ~(goify (.getCompare cu)) ~'continue)
+      (qwerty/goto ~'end)
       ~'continue
       (qwerty/do
         ~@(map goify (.getUpdate cu))
         ~(goify (.getBody cu)))
       ~'end)))
 (defmethod goify japa.parser.ast.stmt.ThrowStmt [cu]
-  `(qwert/. panic ~(goify (.getExpr cu))))
+  `(qwerty/. panic ~(goify (.getExpr cu))))
 (defmethod goify japa.parser.ast.stmt.WhileStmt [cu]
   `(qwerty/labels
     ~'start
-    (qwerty/test ~(goify (.getCondition cu)) continue)
-    (qwerty/goto end)
+    (qwerty/test ~(goify (.getCondition cu)) ~'continue)
+    (qwerty/goto ~'end)
     ~'continue
     (qwerty/do
       ~(goify (.getBody cu)))
@@ -221,8 +247,10 @@
   (goify (.getExpression cu)))
 (defmethod goify japa.parser.ast.expr.AssignExpr
   [cu]
-  `(qwerty/set! (qwerty/goref ~(goify (.getTarget cu)))
-                ~(goify (.getValue cu))))
+  `(qwerty/do
+     (qwerty/set! ~(goify (.getTarget cu))
+                  ~(goify (.getValue cu)))
+     nil))
 (defmethod goify japa.parser.ast.expr.ConditionalExpr
   [cu]
   `(qwerty/if ~(goify (.getCondition cu))
@@ -235,12 +263,30 @@
   [cu]
   `(qwerty/aget (qwerty/goref ~(goify (.getName cu)))
                 ~(goify (.getIndex cu))))
-
-
-
+(defmethod goify japa.parser.ast.stmt.ContinueStmt
+  [cu]
+  `(qwerty/do
+     (qwerty/comment "continue")
+     nil))
+(defmethod goify japa.parser.ast.stmt.BreakStmt
+  [cu]
+  `(qwerty/do
+     (qwerty/comment "break")
+     nil))
 
 (use 'clojure.pprint)
 
+(defn p [exp]
+  (if (and (seq? exp)
+           (= 'qwerty/do (first exp)))
+    (doseq [exp (rest exp)]
+      (p exp)
+      (println))
+    (do
+      (pprint exp)
+      (println))))
+
 (prn `(qwerty/package ~'main))
 (prn `(qwerty/varize false))
-(pprint (goify (japa.parser.JavaParser/parse System/in)))
+(println)
+(p (goify (japa.parser.JavaParser/parse System/in)))
