@@ -41,6 +41,7 @@
 (defmethod varize-expression-seq 'qwerty/if [exp up-env down-env]
   [exp up-env down-env])
 (defmethod varize-expression-seq 'qwerty/nil? [exp up-env down-env] [exp up-env down-env])
+(defmethod varize-expression-seq 'qwerty/comment [exp up-env down-env] [exp up-env down-env])
 (defmethod varize-expression-seq 'qwerty/cast [exp up-env down-env] [exp up-env down-env])
 (defmethod varize-expression-seq 'qwerty/.- [exp up-env down-env] [exp up-env down-env])
 (defmethod varize-expression-seq 'qwerty/new [exp up-env down-env] [exp up-env down-env])

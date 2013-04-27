@@ -183,4 +183,6 @@
    (X)
    (println "PrStr")
    (println (lisp/pr-str (qwerty/quote (3 4 a b c "x\"y\"\n" (1 2) nil))))
+   ;; (println "Apply")
+   ;; (println (qwerty/go-method-call (qwerty/goref iadd) Apply1 (qwerty/quote (1 2))))
    (qwerty/. test3)))

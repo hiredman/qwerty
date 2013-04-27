@@ -37,9 +37,9 @@
   (Invoke6_3 (a1 a2 a3 a4 a5 a6) (result1 result2 result3))
   (Invoke6_4 (a1 a2 a3 a4 a5 a6) (result1 result2 result3 result4))
 
-  ;; (Apply1 (args) (result1))
-  ;; (Apply2 (args) (result1 result2))
-  ;; (Apply3 (args) (result1 result2 result3))
-  ;; (Apply4 (args) (result1 result2 result3 result4))
+  (Apply1 (args) (result1))
+  (Apply2 (args) (result1 result2))
+  (Apply3 (args) (result1 result2 result3))
+  (Apply4 (args) (result1 result2 result3 result4))
 
   )

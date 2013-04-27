@@ -51,13 +51,7 @@
   `(qwerty/do ~@new-children))
 
 (defmethod children-of-seq 'qwerty/local [_] ())
-(defmethod make-seq 'qwerty/local[form new-children]
-  (assert (empty? new-children) (pr-str new-children))
-  form)
-
-
-(defmethod children-of-seq 'qwerty/local [_] ())
-(defmethod make-seq 'qwerty/local[form new-children]
+(defmethod make-seq 'qwerty/local [form new-children]
   (assert (empty? new-children) (pr-str new-children))
   form)
 
