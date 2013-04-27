@@ -34,6 +34,7 @@ clean:
 	rm -rf pkg
 	rm -rf foo
 	rm -rf repl
+	rm -rf LispReader.q
 
 LispReader.q: LispReader.java java-to-go.clj
 	./java-to-go.clj < LispReader.java > LispReader.q
