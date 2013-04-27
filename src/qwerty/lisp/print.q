@@ -29,6 +29,11 @@
                      (qwerty/fn* (exp)
                        (qwerty/. strconv.Quote (qwerty/cast string exp)))))
 
+(qwerty/let* ((k "*qwerty.AVar")
+              (k (qwerty/cast string k)))
+  (qwerty/map-update (qwerty/goref pr_dispatch) k
+                     (qwerty/fn* (exp) (qwerty/go-method-call (qwerty/cast *AVar exp) String))))
+
 (qwerty/godef string_append
   (qwerty/fn* (x y)
     (qwerty/let* ((a (qwerty/cast string x))
