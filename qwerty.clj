@@ -303,8 +303,9 @@
 (defmethod lower nil [s] nil)
 
 (defmethod lower clojure.lang.ISeq [s]
-  (lower-seq s))
-
+  (if (empty? s)
+    nil
+    (lower-seq s)))
 
 (def max-arity 6)
 (def max-returns 4)
@@ -323,9 +324,8 @@
     `(qwerty/do
        (qwerty/comment "free-in-body" ~(pr-str free-in-body))
        (qwerty/struct ~struct-name
-                      ~@(doall (for [v free-in-body
-                                     i [v 'interface]]
-                                 i)))
+                      ~@(doall (for [v free-in-body]
+                                 `(qwerty/T ~v ~'interface))))
        ~@(for [return-count (range 1 (inc max-returns))
                :let [apply-name (symbol (str "Apply" return-count))
                      values (repeatedly return-count #(gensym 'values))
@@ -392,7 +392,7 @@
                (qwerty/do
                  (qwerty/. ~'panic ~(str "bad arity " arg-count "-" return-count))
                  (qwerty/values ~@(repeat return-count nil))))))
-       (qwerty/defgomethod ~'String ~struct-pointer (~'s) (~'s) 
+       (qwerty/defgomethod ~'String ~struct-pointer (~'s) (~'s)
          (() (~'string))
          ~(str "#<IFn " struct-name ">"))
        (qwerty/defgofun ~constructor ~(seq free-in-body)
@@ -410,9 +410,25 @@
   `(qwerty/defgofun ~function-name ~(or args ()) ~types
      ~(lower `(qwerty/do ~@body))))
 
+(defmethod lower-seq 'qwerty/func [[_ name-or-target-type :as exp]]
+  (if (symbol? name-or-target-type)
+    (let [[_ name args returns body] exp]
+      `(qwerty/func ~name ~args ~returns ~(lower body)))
+    (let [[_ target name args returns body] exp]
+      `(qwerty/func ~target ~name ~args ~returns ~(lower body)))))
+
 (defmethod lower-seq 'qwerty/defgomethod [[_ method-name type-name args returns types body]]
   `(qwerty/defgomethod ~method-name ~type-name ~args ~returns ~types
      ~(lower body)))
+
+;; TODO: multi value return
+(defmethod lower-seq 'qwerty/return [[_ v]]
+  (if (coll? v)
+    (let [x (gensym 'foo)]
+      (lower
+       `(qwerty/let* ((~x ~(lower v)))
+                     (qwerty/return ~x))))
+    `(qwerty/return ~v)))
 
 (defmethod lower-seq 'qwerty/. [[_ func & args]]
   (if (every? (complement coll?) args)
@@ -530,6 +546,11 @@
        (lower
         `(qwerty/results ~values ~app
                          ~(lower `(qwerty/set! ~f ~body)))))
+     (= 'qwerty/return (first lv))
+     (lower
+      `(qwerty/do
+         (qwerty/set! ~f nil)
+         ~lv))
      :else
      (let [bindings (for [x lv]
                       (if (symbol? x)
@@ -556,6 +577,16 @@
                             (~b_ ~(lower b)))
                            (qwerty/+ ~a_ ~b_))))
     `(qwerty/+ ~a ~b)))
+
+(defmethod lower-seq 'qwerty/bit-and [[_ a b]]
+  (if (or (coll? a)
+          (coll? b))
+    (let [a_ (gensym 'a)
+          b_ (gensym 'b)]
+      (lower `(qwerty/let* ((~a_ ~(lower a))
+                            (~b_ ~(lower b)))
+                           (qwerty/bit-and ~a_ ~b_))))
+    `(qwerty/bit-and ~a ~b)))
 
 (defmethod lower-seq 'qwerty/- [[_ a b]]
   (if (or (coll? a)
@@ -867,7 +898,7 @@
         `(qwerty/let* ~bindings
                       ~(reduce
                         (fn [tail [el _]]
-                          `(~'Cons ~el ~tail))
+                          `(qwerty/. ~'Cons ~el ~tail))
                         nil (reverse bindings)))))
      (let [bindings (for [item v]
                       (list (gensym 'quote) (lower `(qwerty/quote ~item))))]
@@ -875,7 +906,7 @@
         `(qwerty/let* ~bindings
                       ~(reduce
                         (fn [tail [el _]]
-                          `(~'qwerty.Cons ~el ~tail))
+                          `(qwerty/. ~'qwerty.Cons ~el ~tail))
                         nil (reverse bindings))))))
    (number? v)
    v
@@ -886,6 +917,8 @@
    :else (assert false)))
 
 (defmethod lower-seq :default [form]
+  (assert (not (nil? form)) form)
+  (assert (not (nil? (first form))) (pr-str form))
   (assert (or (coll? (first form))
               (not= "qwerty" (namespace (first form)))) (with-out-str (pprint form)))
   (if (not (every? symbol? form))
@@ -904,6 +937,22 @@
                              (qwerty/comment "line" ~(:line (meta form)))
                              (qwerty/go-method-call ~f ~(symbol (str "Invoke" (count (rest form)) "_1"))
                                                     ~@(rest form))))))))
+
+(defmulti type-string type)
+(defmulti type-string-seq first)
+(defmethod type-string clojure.lang.Symbol [s]
+  (if (= 'interface s)
+    "interface{}"
+    (let [n (name s)]
+      (if (.startsWith n (str (name *package*) "."))
+        (.replaceFirst n (str (name *package*) ".") "")
+        n))))
+(defmethod type-string clojure.lang.ISeq [s]
+  (type-string-seq s))
+(defmethod type-string-seq '* [[_ v]]
+  (str "*" (type-string v)))
+
+
 
 (def info (atom {}))
 
@@ -1008,6 +1057,49 @@
     (println)))
 
 
+(defmethod go-seq 'qwerty/func [[_ name-or-target-type :as exp]]
+  (binding [*scope* :function
+            *context* :statement]
+    (if (symbol? name-or-target-type)
+      (let [[_ name args returns body] exp
+            args (for [[T n type] args]
+                   (do
+                     (assert (= T 'qwerty/T))
+                     (str n " " (type-string type))))
+            returns (for [[T n type] returns]
+                      (do
+                        (assert (= T 'qwerty/T))
+                        (type-string type)))]
+        (println "func" name "("(apply str (interpose \, args)) ")"
+                 "("(apply str (interpose \, returns)) ")"
+                 "{")
+        (go body)
+        (println "}"))
+      (let [[_ target name args returns body] exp
+            args (for [[T n type] args]
+                   (do
+                     (assert (= T 'qwerty/T))
+                     (str n " " (type-string type))))
+            returns (for [[T n type] returns]
+                      (do
+                        (assert (= T 'qwerty/T))
+                        (type-string type)))
+            [T n type] target
+            _ (assert (= T 'qwerty/T) T)
+            target (str n " " (type-string type))]
+        (println "func" "(" target ")" name "("(apply str (interpose \, args)) ")"
+                 "("(apply str (interpose \, returns)) ")"
+                 "{")
+        (go body)
+        (println "}")))))
+
+(defmethod go-seq 'qwerty/return [[_ v]]
+  (println)
+  (print "return ")
+  (go v)
+  (println))
+
+
 (defmethod go-seq 'qwerty/defgomethod [[_ method-name type-name args returns types body]]
   (binding [*scope* :function]
     (let [[this-name & args] args]
@@ -1056,10 +1148,9 @@
 
 (defmethod go-seq 'qwerty/struct [[_ struct-name & fields]]
   (println "type" struct-name "struct {")
-  (doseq [[field-name field-type] (partition-all 2 fields)]
-    (println " " field-name (if (= 'interface field-type)
-                              "interface {}"
-                              field-type)))
+  (doseq [[T name type] fields]
+    (assert (= 'qwerty/T T))
+    (println " " name (type-string type) " "))
   (println "}")
   (println))
 
@@ -1168,6 +1259,13 @@
   (if (= :return *context*)
     (print "return"))
   (print "(" a "+" b ")")
+  (if (= :return *context*)
+    (println)))
+
+(defmethod go-seq 'qwerty/bit-and [[_ a b]]
+  (if (= :return *context*)
+    (print "return"))
+  (print "(" a "&" b ")")
   (if (= :return *context*)
     (println)))
 
@@ -1334,6 +1432,7 @@
            qwerty/defgomethod
            qwerty/definterface
            qwerty/godef
+           qwerty/func
            } (first form))))
 
 (defmethod raise-decls-seq 'qwerty/defgofun [[_ function-name args types body]]
@@ -1344,6 +1443,23 @@
        ~@defs
        (qwerty/defgofun ~function-name ~args ~types
          ~body))))
+
+(defmethod raise-decls-seq 'qwerty/func [[_ name-or-target-type :as exp]]
+  (if (symbol? name-or-target-type)
+    (let [[_ name args returns body] exp
+          body (if (seq? body) body `(qwerty/do ~body))
+          defs (doall (filter decl? body))
+          body (doall (map raise-decls (remove decl? body)))]
+      `(qwerty/do
+         ~@defs
+         (qwerty/func ~name ~args ~returns ~body)))
+    (let [[_ target name args returns body] exp
+          body (if (seq? body) body `(qwerty/do ~body))
+          defs (doall (filter decl? body))
+          body (doall (map raise-decls (remove decl? body)))]
+      `(qwerty/do
+         ~@defs
+         (qwerty/func ~target ~name ~args ~returns ~body)))))
 
 (defmethod raise-decls-seq 'qwerty/defgomethod [[_ method-name type-name args returns types body]]
   (let [body (if (seq? body) body `(qwerty/do ~body))
@@ -1440,6 +1556,8 @@
 (defmethod raise-locals-seq 'qwerty/values [exp up-env down-env] [exp up-env down-env])
 (defmethod raise-locals-seq 'qwerty/comment [exp up-env down-env] [exp up-env down-env])
 (defmethod raise-locals-seq 'qwerty/defgofun [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/func [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/return [exp up-env down-env] [exp up-env down-env])
 (defmethod raise-locals-seq 'qwerty/new [exp up-env down-env] [exp up-env down-env])
 (defmethod raise-locals-seq 'qwerty/cast [exp up-env down-env] [exp up-env down-env])
 (defmethod raise-locals-seq 'qwerty/.- [exp up-env down-env] [exp up-env down-env])
@@ -1492,6 +1610,7 @@
 (defmethod raise-locals-seq 'qwerty/defer [exp up-env down-env] [exp up-env down-env])
 (defmethod raise-locals-seq 'qwerty/< [exp up-env down-env] [exp up-env down-env])
 (defmethod raise-locals-seq 'qwerty/aget [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/bit-and [exp up-env down-env] [exp up-env down-env])
 
 (defn raise-locals-out-of-labels [form seen]
   (first (expand form {} seen raise-locals)))

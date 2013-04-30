@@ -98,6 +98,20 @@
   (assert (= 1 (count new-children)))
   `(qwerty/defgofun ~function-name ~args ~types ~(first new-children)))
 
+(defmethod children-of-seq 'qwerty/func [[_ name-or-target-type :as exp]]
+  (if (symbol? name-or-target-type)
+    (let [[_ name args returns body] exp]
+      (list body))
+    (let [[_ target name args returns body] exp]
+      (list body))))
+(defmethod make-seq 'qwerty/func [[_ name-or-target-type :as exp] new-children]
+  (assert (= 1 (count new-children)))
+  (if (symbol? name-or-target-type)
+    (let [[_ name args returns body] exp]
+      `(qwerty/func ~name ~args ~returns ~@new-children))
+    (let [[_ target name args returns body] exp]
+      `(qwerty/func ~target ~name ~args ~returns ~@new-children))))
+
 (defmethod children-of-seq 'qwerty/new [[_ & args]]
   ())
 (defmethod make-seq 'qwerty/new [form new-children]
@@ -144,6 +158,12 @@
 (defmethod make-seq 'qwerty/+ [[_ a b] new-children]
   (assert (= 2 (count new-children)))
   `(qwerty/+ ~@new-children))
+
+(defmethod children-of-seq 'qwerty/bit-and [[_ & args]]
+  args)
+(defmethod make-seq 'qwerty/bit-and [[_ a b] new-children]
+  (assert (= 2 (count new-children)))
+  `(qwerty/bit-and ~@new-children))
 
 (defmethod children-of-seq 'qwerty/- [[_ & args]]
   args)
@@ -280,6 +300,11 @@
 (defmethod make-seq 'qwerty/defer [[_ v] new-children]
   (assert (= 1 (count new-children)))
   `(qwerty/defer ~@new-children))
+
+(defmethod children-of-seq 'qwerty/return [[_ a]] (list a))
+(defmethod make-seq 'qwerty/return [[_ v] new-children]
+  (assert (= 1 (count new-children)))
+  `(qwerty/return ~@new-children))
 
 (defmethod children-of-seq :default [exp]
   (assert (not (and (symbol? (first exp))

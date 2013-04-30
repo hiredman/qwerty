@@ -11,7 +11,11 @@ foo: foo.go
 repl: repl.go
 	GOPATH=$$PWD go build repl.go
 
-%.go: %.q qwerty.clj alpha.clj Makefile expand.clj free.clj var.clj compilation-env
+.compiler: qwerty.clj alpha.clj Makefile expand.clj free.clj var.clj
+	touch .compiler
+
+#.compiler
+%.go: %.q compilation-env .compiler
 	./qwerty.clj < $< > /tmp/bar.go
 	gofmt /tmp/bar.go > /tmp/foo.go
 	cp /tmp/foo.go $@
@@ -38,3 +42,7 @@ clean:
 
 LispReader.q: LispReader.java java-to-go.clj
 	./java-to-go.clj < LispReader.java > LispReader.q
+
+LispReader: LispReader.go
+	GOPATH=$$PWD go build LispReader.go
+

@@ -69,7 +69,7 @@
    (println (qwerty/nil? nil))
    (println ((qwerty/goref iadd) 1 2))
    (println ((qwerty/goref qwerty.Cdr)
-                            ((qwerty/goref qwerty.Cons) "x" "y")))
+             (qwerty/. qwerty.Cons "x" "y")))
    (println "Hello World")))
 
 (qwerty/defgofun test2 ()
@@ -186,3 +186,8 @@
    ;; (println "Apply")
    ;; (println (qwerty/go-method-call (qwerty/goref iadd) Apply1 (qwerty/quote (1 2))))
    (qwerty/. test3)))
+
+
+
+;; (T x interface)
+;; (T )

@@ -18,22 +18,29 @@
                                            {"clojars" "http://clojars.org/repo"}))
 
 (def types
-  {})
+  '{Int int
+    Symbol *qwerty.ASymbol
+    Object interface
+    IFn *qwerty.IFn
+    String string})
 
 (defmulti type-convert type)
 (defmethod type-convert japa.parser.ast.type.ReferenceType [t]
-  (symbol (.getName (.getType t))))
+  (let [t (symbol (.getName (.getType t)))]
+    (types t t)))
 (defmethod type-convert japa.parser.ast.type.PrimitiveType [t]
-  (symbol (.toString (.getType t))))
+  (let [t (symbol (.toString (.getType t)))]
+    (types t t)))
 (defmethod type-convert japa.parser.ast.type.ClassOrInterfaceType [t]
-  (symbol (.getName t)))
+  (let [t (symbol (.getName t))]
+    (types t t)))
 
 
 (defn static? [o]
   (java.lang.reflect.Modifier/isStatic
    (.getModifiers o)))
 
-(def imports (atom '#{Symbol Pattern Keyword Var}))
+(def imports (atom '#{Symbol Pattern Keyword Var RT}))
 
 
 (defmulti goify type)
@@ -108,7 +115,8 @@
      ~(goify (.getBlock cu))))
 (defmethod goify japa.parser.ast.body.MethodDeclaration [cu]
   (if (static? cu)
-    (let [return-type (symbol (str (.getType cu)))]
+    (let [return-type (symbol (str (.getType cu)))
+          return-type (types return-type return-type)]
       `(qwerty/defgofun ~(symbol (str *type* "_" (.getName cu))) ~(map goify (.getParameters cu))
          (() ~(cond
                (= return-type 'boolean)
@@ -118,7 +126,18 @@
                :else
                (list return-type)))
          ~(goify (.getBody cu))))
-    `(method-decl)))
+    (let [return-type (symbol (str (.getType cu)))
+          return-type (types return-type return-type)]
+      `(qwerty/defgomethod ~(symbol (.getName cu)) ~*type*
+         ~(map goify (.getParameters cu)) (~'r)
+         (() ~(cond
+               (= return-type 'boolean)
+               '(bool)
+               (= return-type 'void)
+               ()
+               :else
+               (list return-type)))
+         ~(goify (.getBody cu))))))
 (defmethod goify japa.parser.ast.body.Parameter [cu]
   (symbol (.getName (.getId cu))))
 (defmethod goify japa.parser.ast.body.ConstructorDeclaration [cu]
@@ -157,6 +176,10 @@
      `(qwerty/let* ((a# (qwerty/cast ~'int ~a))
                     (b# (qwerty/cast ~'int ~b)))
                    (qwerty/< a# b#))
+     (= 'qwerty/greater op)
+     `(qwerty/let* ((a# (qwerty/cast ~'int ~a))
+                    (b# (qwerty/cast ~'int ~b)))
+                   (qwerty/< b# a#))
      (= 'qwerty/plus op)
      `(qwerty/let* ((a# (qwerty/cast ~'int ~a))
                     (b# (qwerty/cast ~'int ~b)))
@@ -165,10 +188,26 @@
      `(qwerty/let* ((a# (qwerty/cast ~'int ~a))
                     (b# (qwerty/cast ~'int ~b)))
                    (qwerty/* a# b#))
+     (= 'qwerty/minus op)
+     `(qwerty/let* ((a# (qwerty/cast ~'int ~a))
+                    (b# (qwerty/cast ~'int ~b)))
+                   (qwerty/- a# b#))
      (= 'qwerty/notEquals op)
      `(qwerty/if (qwerty/= ~a ~b)
         false
         true)
+     (= 'qwerty/greaterEquals op)
+     `(qwerty/let* ((a# ~a)
+                    (b# ~b)
+                    (c# (qwerty/< b# a#)))
+                   (qwerty/if c# c# (qwerty/= a# b#)))
+     (= 'qwerty/lessEquals op)
+     `(qwerty/let* ((a# ~a)
+                    (b# ~b)
+                    (c# (qwerty/< a# b#)))
+                   (qwerty/if c# c# (qwerty/= a# b#)))
+     (= 'qwerty/binAnd op)
+     `(qwerty/bit-and ~a ~b)
      :else
      `(~op ~a ~b))))
 (defmethod goify japa.parser.ast.expr.UnaryExpr [cu]
@@ -184,6 +223,8 @@
      (= op 'qwerty/negative)
      `(qwerty/let* ((a# (qwerty/cast ~'int ~a)))
                    (qwerty/* a# -1))
+     (= op 'qwerty/not)
+     `(qwerty/if ~a false true)
      :else
      `(~op ~a))))
 (defmethod goify japa.parser.ast.expr.CastExpr [cu]
@@ -233,7 +274,7 @@
         ~(goify (.getBody cu)))
       ~'end)))
 (defmethod goify japa.parser.ast.stmt.ThrowStmt [cu]
-  `(qwerty/. panic ~(goify (.getExpr cu))))
+  `(qwerty/. ~'panic ~(goify (.getExpr cu))))
 (defmethod goify japa.parser.ast.stmt.WhileStmt [cu]
   `(qwerty/labels
     ~'start
@@ -243,6 +284,12 @@
     (qwerty/do
       ~(goify (.getBody cu)))
     ~'end))
+(defmethod goify japa.parser.ast.stmt.SwitchStmt [cu]
+  `(switch))
+(defmethod goify japa.parser.ast.stmt.DoStmt [cu]
+  `(do))
+(defmethod goify japa.parser.ast.stmt.ForeachStmt [cu]
+  `(do))
 (defmethod goify japa.parser.ast.stmt.ExpressionStmt [cu]
   (goify (.getExpression cu)))
 (defmethod goify japa.parser.ast.expr.AssignExpr

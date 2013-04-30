@@ -23,6 +23,9 @@
 (defmethod α-convert-seq 'qwerty/cast [[_ t v] env]
   `(qwerty/cast ~t ~(α-convert v env)))
 
+(defmethod α-convert-seq 'qwerty/return [[_ v] env]
+  `(qwerty/return ~(α-convert v env)))
+
 (defmethod α-convert-seq 'qwerty/nil? [[_ v] env]
   `(qwerty/nil? ~(α-convert v env)))
 
@@ -31,6 +34,9 @@
 
 (defmethod α-convert-seq 'qwerty/+ [[_ a b] env]
   `(qwerty/+ ~(α-convert a env) ~(α-convert b env)))
+
+(defmethod α-convert-seq 'qwerty/bit-and [[_ a b] env]
+  `(qwerty/bit-and ~(α-convert a env) ~(α-convert b env)))
 
 (defmethod α-convert-seq 'qwerty/- [[_ a b] env]
   `(qwerty/- ~(α-convert a env) ~(α-convert b env)))
@@ -81,6 +87,23 @@
           ~types
           ~(α-convert body (into env args))))
       (meta env))))
+
+(defmethod α-convert-seq 'qwerty/func [[_ name-or-target-type :as exp] env]
+  (if (symbol? name-or-target-type)
+    (let [[_ name args returns body] exp
+          arg-map (into {} (for [[T n type :as a] args]
+                             [a (list T (gensym 'args) type)]))
+          args (map val arg-map)
+          new-env (into env (for [[[_ n] [_ v]] arg-map]
+                              [n v]))]
+      `(qwerty/func ~name ~args ~returns ~(α-convert body new-env)))
+    (let [[_ target name args returns body] exp
+          arg-map (into {} (for [[T n type :as a] args]
+                             [a (list T (gensym a) type)]))
+          args (map val arg-map)
+          new-env (into env (for [[[_ n] [_ v]] arg-map]
+                              [n v]))]
+      `(qwerty/func ~target ~name ~args ~returns ~(α-convert body new-env)))))
 
 (defmethod α-convert-seq 'qwerty/do [[_ & body] env]
   (doall `(qwerty/do ~@(doall (map #(α-convert % env) body)))))

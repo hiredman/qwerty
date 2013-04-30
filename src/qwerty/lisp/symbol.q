@@ -1,8 +1,8 @@
 (qwerty/package qwerty)
 
 (qwerty/struct ASymbol
-               name string
-               hash int)
+  (qwerty/T name string)
+  (qwerty/T hash int))
 
 (qwerty/defgofun Symbol_ (name)
   ((interface) (interface))

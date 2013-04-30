@@ -1,38 +1,47 @@
 (qwerty/package qwerty)
 
 (qwerty/struct ACons
-               car interface
-               cdr interface
-               hash interface)
+  (qwerty/T car interface)
+  (qwerty/T cdr interface)
+  (qwerty/T hash int))
 
-(qwerty/defgofun CarF (c)
-  ((interface) (interface))
-  (qwerty/if (qwerty/nil? c)
-    nil
-    (qwerty/results (foo ok) (qwerty/cast *ACons c)
-                    (qwerty/if ok
-                      (qwerty/let* ((foo (qwerty/cast *ACons foo)))
-                        (qwerty/.- foo car))
-                      (qwerty/let* ((foo (qwerty/cast ACons c)))
-                        (qwerty/.- foo car))))))
+;; [[_ name args returns body]]
+;; [[_ target name args returns body]]
 
-(qwerty/defgofun CdrF (c)
-  ((interface) (interface))
-  (qwerty/if (qwerty/nil? c)
-    nil
-    (qwerty/results (foo ok) (qwerty/cast *ACons c)
-                    (qwerty/if ok
-                      (qwerty/let* ((foo (qwerty/cast *ACons foo)))
-                        (qwerty/.- foo cdr))
-                      (qwerty/let* ((foo (qwerty/cast ACons c)))
-                        (qwerty/.- foo cdr))))))
+(qwerty/func Cons ((qwerty/T x interface)
+                   (qwerty/T y interface))
+  ((qwerty/T _ interface))
+  (qwerty/let* ((c (qwerty/new ACons)))
+    (qwerty/do
+     (qwerty/set! (qwerty/.- c car) x)
+     (qwerty/set! (qwerty/.- c cdr) y)
+     (qwerty/return c))))
 
-(qwerty/godef Cons (qwerty/fn* (x y)
-                     (qwerty/let* ((c (qwerty/new ACons)))
-                       (qwerty/do
-                        (qwerty/set! (qwerty/.- c car) x)
-                        (qwerty/set! (qwerty/.- c cdr) y)
-                        c))))
+(qwerty/func (qwerty/T c ACons) Car () ((qwerty/T _ interface))
+  (qwerty/return (qwerty/.- c car)))
+
+(qwerty/func CarF ((qwerty/T c interface)) ((qwerty/T _ interface))
+  (qwerty/return
+   (qwerty/if (qwerty/nil? c)
+     nil
+     (qwerty/results (foo ok) (qwerty/cast *ACons c)
+       (qwerty/if ok
+         (qwerty/let* ((foo (qwerty/cast *ACons foo)))
+           (qwerty/go-method-call foo Car))
+         (qwerty/let* ((foo (qwerty/cast ACons c)))
+           (qwerty/go-method-call foo Car)))))))
+
+(qwerty/func CdrF ((qwerty/T c interface)) ((qwerty/T _ interface))
+  (qwerty/return
+   (qwerty/if (qwerty/nil? c)
+     nil
+     (qwerty/results (foo ok) (qwerty/cast *ACons c)
+       (qwerty/if ok
+         (qwerty/let* ((foo (qwerty/cast *ACons foo)))
+           (qwerty/.- foo cdr))
+         (qwerty/let* ((foo (qwerty/cast ACons c)))
+           (qwerty/.- foo cdr)))))))
+
 
 (qwerty/godef Car (qwerty/fn* (c) (qwerty/. CarF c)))
 
@@ -44,12 +53,7 @@
                             (qwerty/. iadd 1 ((qwerty/goref ListCount) ((qwerty/goref Cdr) lst))))))
 
 (qwerty/def cons
-  (qwerty/fn* (a b) ((qwerty/goref Cons) a b)))
-
-(qwerty/godef deref (qwerty/fn* (v) (qwerty/go-method-call (qwerty/cast *AVar v) Deref)))
-
-(qwerty/godef symbol (qwerty/fn* (n) (qwerty/. Symbol_ n)))
-(qwerty/godef intern_var (qwerty/fn* (n v) (qwerty/. InternVar_ n v)))
+  (qwerty/fn* (a b) (qwerty/. Cons a b)))
 
 (qwerty/def lisp/map
   (qwerty/fn* (f lst)
@@ -79,39 +83,39 @@
   (qwerty/fn* (lst) (lisp/fold cons nil lst)))
 
 
-(qwerty/defgomethod HashCode ACons (s) (r)
-  (() (interface))
-  (qwerty/do
-   (qwerty/. panic "hashing cons")
-   0))
+;; (qwerty/defgomethod HashCode ACons (s) (r)
+;;   (() (interface))
+;;   (qwerty/do
+;;    (qwerty/. panic "hashing cons")
+;;    0))
 
 (qwerty/def nop (qwerty/fn* (x) x))
 
-;; this is so gross
-(qwerty/defgomethod String ACons (s) (r)
-  (() (string))
-  (qwerty/let* ((r "(")
-                (lst s))
-    (qwerty/do
-     (qwerty/labels
-      (qwerty/goto item)
-      space
-      (qwerty/set! r ((qwerty/goref string_append) r " "))
-      item
-      (qwerty/let* ((first ((qwerty/goref Car) lst))
-                    (rest ((qwerty/goref Cdr) lst)))
-        (nop
-         (qwerty/if (qwerty/= rest nil)
-           (qwerty/do
-            (qwerty/set! r ((qwerty/goref string_append) r ((qwerty/goref PrStr) first)))
-            (qwerty/goto end)
-            nil)
-           (qwerty/do
-            (qwerty/set! r ((qwerty/goref string_append) r ((qwerty/goref PrStr) first)))
-            (qwerty/set! lst rest)
-            (qwerty/goto space)
-            nil))))
-      end)
-     (qwerty/set! r ((qwerty/goref string_append) r ")"))
-     (qwerty/let* ((r (qwerty/cast string r)))
-       r))))
+;; ;; this is so gross
+(qwerty/func (qwerty/T s ACons) String () ((qwerty/T _ string))
+  (qwerty/let* ((r (qwerty/let* ((r "(")
+                                 (lst s))
+                     (qwerty/do
+                      (qwerty/labels
+                       (qwerty/goto item)
+                       space
+                       (qwerty/set! r ((qwerty/goref string_append) r " "))
+                       item
+                       (qwerty/let* ((first ((qwerty/goref Car) lst))
+                                     (rest ((qwerty/goref Cdr) lst)))
+                         (nop
+                          (qwerty/if (qwerty/= rest nil)
+                            (qwerty/do
+                             (qwerty/set! r ((qwerty/goref string_append) r ((qwerty/goref PrStr) first)))
+                             (qwerty/goto end)
+                             nil)
+                            (qwerty/do
+                             (qwerty/set! r ((qwerty/goref string_append) r ((qwerty/goref PrStr) first)))
+                             (qwerty/set! lst rest)
+                             (qwerty/goto space)
+                             nil))))
+                       end)
+                      (qwerty/set! r ((qwerty/goref string_append) r ")"))
+                      r)))
+                (r (qwerty/cast string r)))
+    (qwerty/return r)))

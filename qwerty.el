@@ -11,6 +11,8 @@
   (put 'qwerty/results 'lisp-indent-function 'defun)
   (put 'qwerty/defgomethod 'lisp-indent-function 'defun)
   (put 'qwerty/definterface 'lisp-indent-function 'defun)
+  (put 'qwerty/func 'lisp-indent-function 'defun)
+  (put 'qwerty/struct 'lisp-indent-function 'defun)
   (font-lock-add-keywords 'qwerty-mode '(("qwerty/*" . font-lock-keyword-face))))
 
 (add-to-list 'auto-mode-alist '("\\.q\\'" . qwerty-mode))

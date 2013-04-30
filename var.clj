@@ -46,6 +46,7 @@
 (defmethod varize-expression-seq 'qwerty/.- [exp up-env down-env] [exp up-env down-env])
 (defmethod varize-expression-seq 'qwerty/new [exp up-env down-env] [exp up-env down-env])
 (defmethod varize-expression-seq 'qwerty/do [exp up-env down-env] [exp up-env down-env])
+(defmethod varize-expression-seq 'qwerty/return [exp up-env down-env] [exp up-env down-env])
 (defmethod varize-expression-seq 'qwerty/set! [exp up-env down-env] [exp up-env down-env])
 (defmethod varize-expression-seq 'qwerty/goref [exp up-env down-env] [exp up-env down-env])
 (defmethod varize-expression-seq 'qwerty/go-method-call [exp up-env down-env] [exp up-env down-env])
@@ -128,6 +129,12 @@
                     (= "qwerty" (namespace (first exp)))))
           (pr-str exp))
   [exp up-env down-env])
+(defmethod varize-expression-seq 'qwerty/func [[_ name-or-target-type :as exp] up-env down-env]
+  (if (symbol? name-or-target-type)
+    (let [[_ name args returns body] exp]
+      [exp up-env (update-in down-env [:env] (comp set into) (map second args))])
+    (let [[_ target name args returns body] exp]
+      [exp up-env (update-in down-env [:env] (comp set into) (cons (second target) (map second args)))])))
 
 (defn varize [exp up-env down-env]
   (expand exp up-env down-env varize-expression))

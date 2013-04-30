@@ -1,9 +1,9 @@
 (qwerty/package qwerty)
 
 (qwerty/struct AVar
-               name string
-               value interface
-               macro bool)
+  (qwerty/T name string)
+  (qwerty/T value interface)
+  (qwerty/T macro bool))
 
 (qwerty/godef the_vars (qwerty/make "map[string]*AVar"))
 
