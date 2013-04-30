@@ -918,10 +918,12 @@
         n))))
 (defmethod type-string clojure.lang.ISeq [s]
   (type-string-seq s))
+(defmethod type-string String [s]
+  s)
 (defmethod type-string-seq '* [[_ v]]
   (str "*" (type-string v)))
-
-
+(defmethod type-string-seq 'map [[_ key value]]
+  (str "map[" (type-string key) "]" (type-string value)))
 
 (def info (atom {}))
 
@@ -1088,10 +1090,10 @@
   (if (= :return *context*)
     (println)))
 
-(defmethod go-seq 'qwerty/make [[_ type-name]]
+(defmethod go-seq 'qwerty/make [[_ type-exp]]
   (if (= :return *context*)
     (print "return"))
-  (print "make(" type-name ")")
+  (print "make(" (type-string type-exp) ")")
   (if (= :return *context*)
     (println)))
 
@@ -1163,7 +1165,7 @@
     (print "return"))
   (binding [*context* :statement]
     (go n))
-  (print ".(" t ")")
+  (print ".(" (type-string t) ")")
   (if (= :return *context*)
     (println)))
 
@@ -1310,7 +1312,7 @@
   (assert  (and (seq? v)
                 (= 'qwerty/make (first v)))
            (pr-str n v))
-  (print "var" n (.trim (first (.split (second v) ",")))  "=")
+  (print "var" n (type-string (second v))  "= ")
   (go v)
   (println))
 

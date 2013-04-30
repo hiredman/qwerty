@@ -3,7 +3,7 @@
 (qwerty/import fmt)
 (qwerty/import strconv)
 
-(qwerty/godef pr_dispatch (qwerty/make "map[string]interface{}"))
+(qwerty/godef pr_dispatch (qwerty/make (map string interface)))
 
 (qwerty/godef Type (qwerty/fn* (x)
                      (qwerty/if (qwerty/nil? x)

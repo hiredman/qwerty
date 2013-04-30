@@ -5,7 +5,7 @@
   (qwerty/T value interface)
   (qwerty/T macro bool))
 
-(qwerty/godef the_vars (qwerty/make "map[string]*AVar"))
+(qwerty/godef the_vars (qwerty/make (map string (* AVar))))
 
 (qwerty/definterface Derefer
   (Deref () (bar)))
