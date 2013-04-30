@@ -82,7 +82,7 @@
              (qwerty/set! a nil)
              (qwerty/goto start))
       end))
-   (qwerty/let* ((ch (qwerty/make "chan interface{}")))
+   (qwerty/let* ((ch (qwerty/make (chan interface))))
      (qwerty/do
       (qwerty/go (qwerty/fn* ()
                    (qwerty/go<- (m ch)

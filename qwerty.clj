@@ -512,6 +512,8 @@
        (lower
         `(qwerty/go<- [~name ~channel]
                       ~(lower `(qwerty/set! ~f ~body)))))
+     (= 'qwerty/make (first lv))
+     `(qwerty/set! ~f ~lv)
      :else
      (do
        (assert (not (and (symbol? (first lv))
@@ -697,8 +699,8 @@
                    (list (gensym 'a) a)))]
       (lower
        `(qwerty/let* ~(remove #(= (first %) (second %)) args)
-                     (qwerty/make ~t ~@(map first args))))
-      `(qwerty/make ~t ~@args))))
+                     (qwerty/make ~t ~@(map first args)))))
+    `(qwerty/make ~t ~@args)))
 
 (defmethod lower-seq 'qwerty/goto [exp]
   exp)
@@ -934,6 +936,8 @@
   (str "map[" (type-string key) "]" (type-string value)))
 (defmethod type-string-seq 'slice [[_ type]]
   (str "[]" (type-string type)))
+(defmethod type-string-seq 'chan [[_ type]]
+  (str "chan " (type-string type)))
 
 (def info (atom {}))
 
