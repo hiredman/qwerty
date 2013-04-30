@@ -8,9 +8,8 @@
   (first () (r))
   (rest () (r)))
 
-(qwerty/defgofun NOP (arg)
-  ((interface) interface)
-  nil)
+(qwerty/func NOP ((qwerty/T x interface)) ((qwerty/T _ interface))
+  (qwerty/return nil))
 
 (qwerty/godef identity (qwerty/fn* (x) x))
 
@@ -53,8 +52,7 @@
 
 ;; ;; (qwerty/godef stdin-rune (qwerty/fn* () (qwerty/. stdin_rune_)))
 
-(qwerty/defgofun test1 ()
-  (())
+(qwerty/func test1 () ()
   (qwerty/do
    (qwerty/let* ((one "one"))
      (qwerty/results (a b c) ((qwerty/fn* () (qwerty/values one "two" "three")))
@@ -72,8 +70,7 @@
              (qwerty/. qwerty.Cons "x" "y")))
    (println "Hello World")))
 
-(qwerty/defgofun test2 ()
-  (())
+(qwerty/func test2 () ()
   (qwerty/do
    (println ((qwerty/fn* () (qwerty/values 1 2))))
    (qwerty/let* ((a "foo"))
@@ -118,8 +115,7 @@
 (println "here1111111")
 (println ((qwerty/goref deref) ((qwerty/goref qwerty.Var) (qwerty/quote lisp/first))))
 
-(qwerty/defgofun test3 ()
-  (())
+(qwerty/func test3 () ()
   (qwerty/do
    (println "test3")
    (println ((qwerty/goref deref) ((qwerty/goref qwerty.Var) (qwerty/quote a/b))))
@@ -165,8 +161,7 @@
 
 (qwerty/def X (qwerty/fn* () ((qwerty/goref println) FOO)))
 
-(qwerty/defgofun main ()
-  (())
+(qwerty/func main () ()
   (qwerty/do
    (qwerty/defer (qwerty/fn* () (println "derefed action")))
    (println "hash of foo")
@@ -188,6 +183,8 @@
    (qwerty/. test3)))
 
 
+;; type expressions
 
 ;; (T x interface)
-;; (T )
+;; (T y int)
+;; (T x (* Symbol))

@@ -76,18 +76,6 @@
                      ~(α-convert exp env)
                      ~(α-convert body (into env args)))))
 
-(defmethod α-convert-seq 'qwerty/defgofun [[_ name args types body] env]
-  (let [args (for [a args]
-               [a (gensym a)])]
-    (with-meta
-      (doall
-       `(qwerty/defgofun
-          ~name
-          ~(doall (map second args))
-          ~types
-          ~(α-convert body (into env args))))
-      (meta env))))
-
 (defmethod α-convert-seq 'qwerty/func [[_ name-or-target-type :as exp] env]
   (if (symbol? name-or-target-type)
     (let [[_ name args returns body] exp

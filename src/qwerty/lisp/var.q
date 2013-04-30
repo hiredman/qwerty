@@ -14,14 +14,13 @@
   (() (interface))
   (qwerty/.- the_var value))
 
-(qwerty/defgofun DerefF (obj)
-  ((interface) (interface))
-  (qwerty/let* ((o (qwerty/cast Derefer obj)))
-    (qwerty/go-method-call o Deref)))
+(qwerty/func DerefF ((qwerty/T obj interface)) ((qwerty/T _ interface))
+  (qwerty/return
+   (qwerty/let* ((o (qwerty/cast Derefer obj)))
+     (qwerty/go-method-call o Deref))))
 
-(qwerty/defgofun Var_ (name)
-  ((interface) (interface))
-  (qwerty/do
+(qwerty/func Var_ ((qwerty/T name interface)) ((qwerty/T _ interface))
+  (qwerty/return
    (qwerty/let* ((n (qwerty/cast *ASymbol name))
                  (n (qwerty/cast string (qwerty/.- n name))))
      (qwerty/do
@@ -37,20 +36,20 @@
 
 (qwerty/godef Var (qwerty/fn* (name) (qwerty/. Var_ name)))
 
-(qwerty/defgofun InternVar_ (name value)
-  ((interface interface) (interface))
+(qwerty/func InternVar_
+  ((qwerty/T name interface) (qwerty/T value interface)) ((qwerty/T _ interface))
   (qwerty/let* ((v (qwerty/cast *AVar (qwerty/. Var_ name))))
     (qwerty/do
      (qwerty/set! (qwerty/.- v value) value)
-     v)))
+     (qwerty/return v))))
 
 (qwerty/godef InternVar (qwerty/fn* (name value) (qwerty/. InternVar_ name value)))
 
-(qwerty/defgofun string_concat (x y)
-  ((interface interface) (interface))
+(qwerty/func string_concat
+  ((qwerty/T x interface) (qwerty/T y interface)) ((qwerty/T _ interface))
   (qwerty/let* ((a (qwerty/cast string x))
                 (b (qwerty/cast string y)))
-    (qwerty/+ a b)))
+    (qwerty/return (qwerty/+ a b))))
 
 (qwerty/defgomethod String AVar (s) (r)
   (() (string))

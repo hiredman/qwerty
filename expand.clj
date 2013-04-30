@@ -92,12 +92,6 @@
   (assert (empty? new-children))
   form)
 
-(defmethod children-of-seq 'qwerty/defgofun [[_ function-name args types body]]
-  (list body))
-(defmethod make-seq 'qwerty/defgofun [[_ function-name args types body] new-children]
-  (assert (= 1 (count new-children)))
-  `(qwerty/defgofun ~function-name ~args ~types ~(first new-children)))
-
 (defmethod children-of-seq 'qwerty/func [[_ name-or-target-type :as exp]]
   (if (symbol? name-or-target-type)
     (let [[_ name args returns body] exp]

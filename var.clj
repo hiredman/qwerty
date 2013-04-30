@@ -81,8 +81,6 @@
 (defmethod varize-expression-seq 'qwerty/. [exp up-env down-env]
   (assert (every? (complement vector?) exp))
   [exp up-env down-env])
-(defmethod varize-expression-seq 'qwerty/defgofun [[_ name args types body :as exp] up-env down-env]
-  [exp up-env (update-in down-env [:env] (comp set into) args)])
 (defmethod varize-expression-seq 'qwerty/defgomethod [[_ name type args returns types body :as exp] up-env down-env]
   [exp up-env (update-in down-env [:env] (comp set into) args)])
 (defmethod varize-expression-seq 'qwerty/godef [[_ n v :as exp] up-env down-env]
