@@ -81,7 +81,7 @@
       `(qwerty/func ~name ~args ~returns ~(α-convert body new-env)))
     (let [[_ target name args returns body] exp
           arg-map (into {} (for [[T n type :as a] args]
-                             [a (list T (gensym a) type)]))
+                             [a (list T (gensym 'args) type)]))
           args (map val arg-map)
           new-env (into env (for [[[_ n] [_ v]] arg-map]
                               [n v]))]

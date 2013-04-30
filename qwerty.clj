@@ -924,6 +924,8 @@
   (str "*" (type-string v)))
 (defmethod type-string-seq 'map [[_ key value]]
   (str "map[" (type-string key) "]" (type-string value)))
+(defmethod type-string-seq 'slice [[_ type]]
+  (str "[]" (type-string type)))
 
 (def info (atom {}))
 

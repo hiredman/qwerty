@@ -63,17 +63,18 @@
       `(qwerty/do
          (qwerty/struct ~type-name
                         ~@(for [field instance-fields
-                                v (.getVariables field)
-                                x [(symbol (.getName (.getId v))) (type-convert (.getType field))]]
-                            x))
-         (qwerty/defgofun ~(symbol (str "Init" type-name)) (~init-this)
-           ((~(symbol (str "*" type-name))) ())
-           (qwerty/do
-             ~@(for [field instance-fields
-                     v (.getVariables field)]
-                 `(qwerty/set!
-                   (qwerty/.- ~init-this ~(symbol (.getName (.getId v))))
-                   ~(goify (.getInit v))))))
+                                v (.getVariables field)]
+                            `(qwerty/T ~(symbol (.getName (.getId v)))
+                                       ~(type-convert (.getType field)))))
+         (qwerty/func
+          ~(symbol (str "Init" type-name))
+          ((qwerty/T ~init-this (~'* ~type-name))) ()
+          (qwerty/do
+            ~@(for [field instance-fields
+                    v (.getVariables field)]
+                `(qwerty/set!
+                  (qwerty/.- ~init-this ~(symbol (.getName (.getId v))))
+                  ~(goify (.getInit v))))))
          ~@(doall (map goify static-fields))
          ~@(doall (map goify methods))))))
 
@@ -97,10 +98,9 @@
                               ~(symbol (.getName cu))
                               ~@(map goify (.getArgs cu))))))
 (defmethod goify japa.parser.ast.expr.ArrayCreationExpr [cu]
-  `(qwerty/make  ~(str "[]" (type-convert (.getType cu))
-                       ", "
-                       (apply str
-                              (interpose \space (map goify (.getDimensions cu)))))))
+  `(qwerty/make
+    (~'slice ~(type-convert (.getType cu)))
+    ~@(map goify (.getDimensions cu))))
 (defmethod goify japa.parser.ast.expr.ObjectCreationExpr [cu]
   `(qwerty/. ~(symbol (str "New" (type-convert (.getType cu))))
              ~@(map (fn [x]
@@ -110,40 +110,43 @@
                     (map goify (.getArgs cu)))))
 (defmethod goify japa.parser.ast.body.InitializerDeclaration [cu]
   (assert (.isStatic cu))
-  `(qwerty/defgofun ~'init ()
-     (() ())
-     ~(goify (.getBlock cu))))
+  `(qwerty/func ~'init () ()
+                ~(goify (.getBlock cu))))
 (defmethod goify japa.parser.ast.body.MethodDeclaration [cu]
   (if (static? cu)
     (let [return-type (symbol (str (.getType cu)))
           return-type (types return-type return-type)]
-      `(qwerty/defgofun ~(symbol (str *type* "_" (.getName cu))) ~(map goify (.getParameters cu))
-         (() ~(cond
-               (= return-type 'boolean)
-               '(bool)
-               (= return-type 'void)
-               ()
-               :else
-               (list return-type)))
-         ~(goify (.getBody cu))))
+      `(qwerty/func ~(symbol (str *type* "_" (.getName cu)))
+                    ~(for [p (.getParameters cu)]
+                       `(qwerty/T ~(goify p) ~'interface))
+                    ~(cond
+                      (= return-type 'boolean)
+                      '((qwerty/T _ bool))
+                      (= return-type 'void)
+                      ()
+                      :else
+                      (list (list 'qwerty/T '_ return-type)))
+                    ~(goify (.getBody cu))))
     (let [return-type (symbol (str (.getType cu)))
           return-type (types return-type return-type)]
-      `(qwerty/defgomethod ~(symbol (.getName cu)) ~*type*
-         ~(map goify (.getParameters cu)) (~'r)
-         (() ~(cond
-               (= return-type 'boolean)
-               '(bool)
-               (= return-type 'void)
-               ()
-               :else
-               (list return-type)))
-         ~(goify (.getBody cu))))))
+      `(qwerty/func (qwerty/T ~'this (~'* ~*type*)) ~(symbol (.getName cu))
+                    ~(for [p (.getParameters cu)]
+                       `(qwerty/T ~(goify p) ~'interface))
+                    ~(cond
+                      (= return-type 'boolean)
+                      '((qwerty/T _ bool))
+                      (= return-type 'void)
+                      ()
+                      :else
+                      (list (list 'qwerty/T '_ return-type)))
+                    ~(goify (.getBody cu))))))
 (defmethod goify japa.parser.ast.body.Parameter [cu]
   (symbol (.getName (.getId cu))))
 (defmethod goify japa.parser.ast.body.ConstructorDeclaration [cu]
-  `(qwerty/defgofun  ~(symbol (str "New" (.getName cu))) ()
-     (() (~(symbol (str "*" (.getName cu)))))
-     (qwerty/let* ((i# (qwerty/new ~(symbol (.getName cu)))))
+  `(qwerty/func ~(symbol (str "New" (.getName cu)))
+                ()
+                ((qwerty/T _# (~'* ~(symbol (.getName cu)))))
+                (qwerty/let* ((i# (qwerty/new ~(symbol (.getName cu)))))
                   (qwerty/. ~(symbol (str "Init" (.getName cu))) i#)
                   i#)))
 (defmethod goify nil [cu]
