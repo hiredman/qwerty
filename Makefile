@@ -8,8 +8,8 @@ test: foo
 foo: foo.go
 	GOPATH=$$PWD go build foo.go
 
-repl: repl.go
-	GOPATH=$$PWD go build repl.go
+repl: src/qwerty/repl.go
+	GOPATH=$$PWD go build src/qwerty/repl.go
 
 .compiler: qwerty.clj alpha.clj Makefile expand.clj free.clj var.clj
 	touch .compiler
@@ -36,9 +36,9 @@ clean:
 	rm -rf ${stdlibenvfiles}
 	rm -rf compilation-env
 	rm -rf pkg
-	rm -rf foo
+	rm -rf foo foo.env foo.go
 	rm -rf repl
-	rm -rf LispReader.q
+	rm -rf LispReader.q LispReader.env LispReader.go
 
 LispReader.q: LispReader.java java-to-go.clj
 	./java-to-go.clj < LispReader.java > LispReader.q
