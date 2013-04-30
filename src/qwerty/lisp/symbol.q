@@ -19,11 +19,9 @@
           (qwerty/. Symbol_ "qwerty/symbol")
           (qwerty/fn* (name) ((qwerty/goref Symbol) name)))
 
-(qwerty/defgomethod String ASymbol (s) (r)
-  (() (string))
-  (qwerty/.- s name))
+(qwerty/func (qwerty/T s ASymbol) String () ((qwerty/T _ string))
+  (qwerty/let* ((s (qwerty/cast string (qwerty/.- s name))))
+    (qwerty/return s)))
 
-
-(qwerty/defgomethod HashCode ASymbol (s) (r)
-  (() (interface))
-  (qwerty/.- s hash))
+(qwerty/func (qwerty/T s ASymbol) HashCode  () ((qwerty/T _ interface))
+  (qwerty/return (qwerty/.- s hash)))

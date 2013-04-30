@@ -163,6 +163,7 @@
 
 (qwerty/func main () ()
   (qwerty/do
+   ((qwerty/fn* () (println "function call")))
    (qwerty/defer (qwerty/fn* () (println "derefed action")))
    (println "hash of foo")
    (println (qwerty/. qwerty.Hash "foo"))

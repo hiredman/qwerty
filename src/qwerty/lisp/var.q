@@ -10,9 +10,8 @@
 (qwerty/definterface Derefer
   (Deref () (bar)))
 
-(qwerty/defgomethod Deref *AVar (the_var) (r)
-  (() (interface))
-  (qwerty/.- the_var value))
+(qwerty/func (qwerty/T the_var AVar) Deref () ((qwerty/T _ interface))
+  (qwerty/return (qwerty/.- the_var value)))
 
 (qwerty/func DerefF ((qwerty/T obj interface)) ((qwerty/T _ interface))
   (qwerty/return
@@ -51,11 +50,11 @@
                 (b (qwerty/cast string y)))
     (qwerty/return (qwerty/+ a b))))
 
-(qwerty/defgomethod String AVar (s) (r)
-  (() (string))
-  (qwerty/cast string
-               (qwerty/. string_concat
-                         (qwerty/. string_concat
-                                   "(qwerty/var "
-                                   (qwerty/.- s name))
-                         ")")))
+(qwerty/func (qwerty/T s AVar) String () ((qwerty/T _ string))
+  (qwerty/let* ((s (qwerty/cast string
+                                (qwerty/. string_concat
+                                          (qwerty/. string_concat
+                                                    "(qwerty/var "
+                                                    (qwerty/.- s name))
+                                          ")"))))
+    (qwerty/return s)))
