@@ -116,8 +116,8 @@
 (defmethod α-convert-seq 'qwerty/definterface [form env]
   form)
 
-(defmethod α-convert-seq 'qwerty/make [form env]
-  form)
+(defmethod α-convert-seq 'qwerty/make [[_ t & args] env]
+  `(qwerty/make ~t ~@(for [a args] (α-convert a env))))
 
 (defmethod α-convert-seq 'qwerty/labels [[_ & exps] env]
   `(qwerty/labels ~@(for [e exps]

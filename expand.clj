@@ -65,10 +65,10 @@
   (assert (= 1 (count new-children)) (pr-str new-children))
   `(qwerty/set! ~(second form) ~@new-children))
 
-(defmethod children-of-seq 'qwerty/make [exp] ())
-(defmethod make-seq 'qwerty/make [form new-children]
-  (assert (empty? new-children) (pr-str new-children))
-  form)
+(defmethod children-of-seq 'qwerty/make [[_ t & args]] args)
+(defmethod make-seq 'qwerty/make [[_ t & _] new-children]
+  ;;(assert (= 1 (count new-children)) (pr-str new-children))
+  `(qwerty/make ~t ~@new-children))
 
 (defmethod children-of-seq 'qwerty/. [[_ method-name & args]]
   args)

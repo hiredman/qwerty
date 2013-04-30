@@ -689,8 +689,16 @@
 (defmethod lower-seq 'qwerty/definterface [exp]
   exp)
 
-(defmethod lower-seq 'qwerty/make [exp]
-  exp)
+(defmethod lower-seq 'qwerty/make [[_ t & args]]
+  (if (some coll? args)
+    (let [args (for [a args]
+                 (if (symbol? a)
+                   (list a a)
+                   (list (gensym 'a) a)))]
+      (lower
+       `(qwerty/let* ~(remove #(= (first %) (second %)) args)
+                     (qwerty/make ~t ~@(map first args))))
+      `(qwerty/make ~t ~@args))))
 
 (defmethod lower-seq 'qwerty/goto [exp]
   exp)
@@ -1092,10 +1100,16 @@
   (if (= :return *context*)
     (println)))
 
-(defmethod go-seq 'qwerty/make [[_ type-exp]]
+(defmethod go-seq 'qwerty/make [[_ type-exp & args]]
   (if (= :return *context*)
     (print "return"))
-  (print "make(" (type-string type-exp) ")")
+  (print "make(" (type-string type-exp))
+  (when (seq args)
+    (print ",")
+    (doseq [a args]
+      (print a)
+      ","))
+  (print  ")")
   (if (= :return *context*)
     (println)))
 
@@ -1541,18 +1555,10 @@
   (if (= 'qwerty/do op)
     (let [decls (filter #(or (decl? %)
                              (and (seq? %)
-                                  (= 'qwerty/local (first %)))
-                             #_(and (seq? %)
-                                    (= 'qwerty/set! (first %))
-                                    (seq? (last %))
-                                    (= 'qwerty/make (first (last %))))) exprs)
+                                  (= 'qwerty/local (first %)))) exprs)
           effects (remove #(or (decl? %)
                                (and (seq? %)
-                                    (= 'qwerty/local (first %)))
-                               #_(and (seq? %)
-                                      (= 'qwerty/set! (first %))
-                                      (seq? (last %))
-                                      (= 'qwerty/make (first (last %))))) exprs)]
+                                    (= 'qwerty/local (first %)))) exprs)]
       `(qwerty/do
          ~@decls
          ~@(when (seq effects)
