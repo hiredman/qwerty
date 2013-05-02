@@ -5,3 +5,5 @@ stdlib
 **.env
 compilation-env
 .compiler
+repl
+ir.q

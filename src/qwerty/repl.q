@@ -29,10 +29,7 @@
 (qwerty/def eval
   (qwerty/fn* (obj)
     (qwerty/if (list? obj)
-      (qwerty/let* ((op (qwerty/cast qwerty.IFn (deref (var (car obj)))))
-                    (a1 (car (cdr obj)))
-                    (a2 (car (cdr (cdr obj)))))
-        (qwerty/go-method-call op Invoke2_1 a1 a2))
+      (lisp/apply (deref (var (car obj))) (cdr obj))
       obj)))
 
 (qwerty/func main () ()

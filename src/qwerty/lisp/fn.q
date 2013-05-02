@@ -43,3 +43,9 @@
   (Apply4 (args) (result1 result2 result3 result4))
 
   )
+
+
+(qwerty/def lisp/apply
+  (qwerty/fn* (f args)
+    (qwerty/let* ((op (qwerty/cast IFn f)))
+      (qwerty/go-method-call op Apply1 args))))

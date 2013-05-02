@@ -324,10 +324,6 @@
         free-in-body (distinct (remove (set args) (free-variables body)))
         this-name (gensym 'this)
         return-types (repeat (apply max (return-count form)) 'interface)]
-    (when (zero? (count args))
-      (binding [*out* *err*]
-        (pprint form)
-        (println)))
     `(qwerty/do
        (qwerty/comment "free-in-body" ~(pr-str free-in-body))
        (qwerty/struct ~struct-name
@@ -336,7 +332,7 @@
        ~@(for [return-count (range 1 (inc max-returns))
                :let [function-name (symbol (str "Apply" return-count))
                      a (gensym 'args)
-                     regular-args (repeatedly (dec (count args)) #(gensym 'applyarg))
+                     regular-args (repeatedly (count args) #(gensym 'applyarg))
                      rest-arg (gensym 'applyrestarg)
                      returns (repeatedly return-count #(gensym 'applyreturns))
                      method (symbol (str "Invoke" (count args) "_" return-count))
@@ -345,48 +341,38 @@
                                                (-> m
                                                    (update-in [:bindings] conj
                                                               (list arg-name
-                                                                    `((qwerty/goref
-                                                                       ~(if (= *package* 'qwerty)
-                                                                          'CarF
-                                                                          'qwerty.CarF))
+                                                                    `(qwerty/.
+                                                                      ~(if (= *package* 'qwerty)
+                                                                         'CarF
+                                                                         'qwerty.CarF)
                                                                       ~(:arg m))))
-                                                   (assoc :arg `((qwerty/goref
-                                                                  ~(if (= *package* 'qwerty)
-                                                                     'CdrF
-                                                                     'qwerty.CdrF))
+                                                   (assoc :arg `(qwerty/.
+                                                                 ~(if (= *package* 'qwerty)
+                                                                    'CdrF
+                                                                    'qwerty.CdrF)
                                                                  ~(:arg m)))))
                                              {:bindings []
                                               :arg a}
                                              regular-args)
                      bindings (conj bindings `(~rest-arg ~arg))]]
-           (if (zero? (count args))
-             `(qwerty/func (qwerty/T ~this-name (~'* ~struct-name)) ~function-name
-                           ((qwerty/T ~a ~'interface))
-                           ~(repeat return-count `(qwerty/T ~'_ ~'interface))
-                           (qwerty/let* ~(seq bindings)
-                                        (qwerty/do
-                                          (qwerty/.
-                                           ~(if (= *package* 'qwerty)
-                                              'Id
-                                              'qwerty.Id)
-                                           (qwerty/if (qwerty/nil? ~rest-arg)
-                                             nil
-                                             (qwerty/do
-                                               (qwerty/. ~'panic "too many args")
-                                               nil)))
-                                          (qwerty/results ~returns
-                                                          (qwerty/go-method-call ~this-name
-                                                                                 ~method
-                                                                                 ~@regular-args)
-                                                          (qwerty/values ~@returns)))))
-             `(qwerty/func (qwerty/T ~this-name (~'* ~struct-name)) ~function-name
-                           ((qwerty/T ~a ~'interface))
-                           ~(repeat return-count `(qwerty/T ~'_ ~'interface))
-                           (qwerty/let* ~(seq bindings)
+           `(qwerty/func (qwerty/T ~this-name (~'* ~struct-name)) ~function-name
+                         ((qwerty/T ~a ~'interface))
+                         ~(repeat return-count `(qwerty/T ~'_ ~'interface))
+                         (qwerty/let* ~(seq bindings)
+                                      (qwerty/do
+                                        (qwerty/.
+                                         ~(if (= *package* 'qwerty)
+                                            'Id
+                                            'qwerty.Id)
+                                         (qwerty/if (qwerty/nil? ~rest-arg)
+                                           nil
+                                           (qwerty/do
+                                             (qwerty/. ~'panic "too many args")
+                                             nil)))
                                         (qwerty/results ~returns
                                                         (qwerty/go-method-call ~this-name
                                                                                ~method
-                                                                               ~@regular-args ~rest-arg)
+                                                                               ~@regular-args)
                                                         (qwerty/values ~@returns))))))
        ~@(for [arg-count (range 0 (inc max-arity))
                return-count (range 1 (inc max-returns))

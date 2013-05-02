@@ -14,7 +14,7 @@ repl: src/qwerty/repl.go
 .compiler: qwerty.clj alpha.clj Makefile expand.clj free.clj var.clj
 	touch .compiler
 
-%.go: %.q compilation-env #.compiler
+%.go: %.q compilation-env .compiler
 	./qwerty.clj < $< > /tmp/bar.go
 	gofmt /tmp/bar.go > /tmp/foo.go
 	cp /tmp/foo.go $@
