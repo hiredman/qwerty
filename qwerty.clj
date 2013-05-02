@@ -259,6 +259,9 @@
 (defmethod return-count-seq 'qwerty/goref [_]
   [1])
 
+(defmethod return-count-seq 'qwerty/quote [_]
+  [1])
+
 (defmethod return-count-seq 'qwerty/go-> [[_ [ch value] body]]
   (return-count body))
 
@@ -508,7 +511,8 @@
        (lower
         `(qwerty/results ~values ~app
                          ~(lower `(qwerty/set! ~f ~body)))))
-     (= 'qwerty/return (first lv))
+     (or (= 'qwerty/return (first lv))
+         (= 'qwerty/labels (first lv)))
      (lower
       `(qwerty/do
          (qwerty/set! ~f nil)
@@ -993,13 +997,7 @@
       (prn s))
   (if (= :return *context*)
     (print "return"))
-  (cond
-   (= s \newline)
-   (print "'\n'")
-   (= s \')
-   (print "'\\'''")
-   :else
-   (print (str "'" s "'")))
+  (print "rune(" (int s) ")")
   (if (= :return *context*)
     (println)))
 

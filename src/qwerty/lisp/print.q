@@ -24,6 +24,12 @@
                      (qwerty/fn* (exp)
                        (qwerty/. fmt.Sprintf "%v" exp))))
 
+(qwerty/let* ((k "int64")
+              (k (qwerty/cast string k)))
+  (qwerty/map-update (qwerty/goref pr_dispatch) k
+                     (qwerty/fn* (exp)
+                       (qwerty/. fmt.Sprintf "%v" exp))))
+
 (qwerty/let* ((k (qwerty/cast string ((qwerty/goref Type) ""))))
   (qwerty/map-update (qwerty/goref pr_dispatch) k
                      (qwerty/fn* (exp)
@@ -39,6 +45,14 @@
     (qwerty/let* ((a (qwerty/cast string x))
                   (b (qwerty/cast string y)))
       (qwerty/+ a b))))
+
+(qwerty/godef string_append_rune
+  (qwerty/fn* (x y)
+    (qwerty/let* ((a (qwerty/cast string x))
+                  (b (qwerty/cast rune y))
+                  (c (qwerty/cast byte (qwerty/. byte b)))
+                  (d (qwerty/cast string (qwerty/. string c))))
+      (qwerty/+ a d))))
 
 (qwerty/godef PrStr
   (qwerty/fn* (exp)
