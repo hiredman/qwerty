@@ -30,6 +30,12 @@
                      (qwerty/fn* (exp)
                        (qwerty/. fmt.Sprintf "%v" exp))))
 
+(qwerty/let* ((k "bool")
+              (k (qwerty/cast string k)))
+  (qwerty/map-update (qwerty/goref pr_dispatch) k
+                     (qwerty/fn* (exp)
+                       (qwerty/. fmt.Sprintf "%v" exp))))
+
 (qwerty/let* ((k (qwerty/cast string ((qwerty/goref Type) ""))))
   (qwerty/map-update (qwerty/goref pr_dispatch) k
                      (qwerty/fn* (exp)

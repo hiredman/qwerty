@@ -81,7 +81,7 @@
 
 
 (qwerty/def number-pattern
-  (qwerty/. regexp.MustCompile "[0-9]+"))
+  (qwerty/. regexp.MustCompile "^[0-9]+"))
 
 
 (qwerty/def number-string?
@@ -89,6 +89,16 @@
     (qwerty/let* ((p (qwerty/cast (* regexp.Regexp) number-pattern))
                   (s (qwerty/cast string s)))
       (qwerty/go-method-call p MatchString s))))
+
+(qwerty/def parse-bool
+  (qwerty/fn* (s)
+    (qwerty/let* ((s (qwerty/cast string s)))
+      (qwerty/results (i error) (qwerty/. strconv.ParseBool s)
+        (qwerty/if (qwerty/nil? error)
+          i
+          (qwerty/do
+           (qwerty/. panic error)
+           nil))))))
 
 
 (qwerty/def lisp/read-atom
@@ -128,7 +138,13 @@
                 (qwerty/do
                  (qwerty/. panic error)
                  nil))))
-          (qwerty/. Symbol_ lst)))))))
+          (qwerty/if (qwerty/= lst "nil")
+            nil
+            (qwerty/if (qwerty/= lst "true")
+              (parse-bool lst)
+              (qwerty/if (qwerty/= lst "false")
+                (parse-bool lst)
+                (qwerty/. Symbol_ lst))))))))))
 
 
 (qwerty/func Pattern_compile1 ((qwerty/T p string)) ((qwerty/T _ interface))

@@ -31,6 +31,13 @@
                 (x (qwerty/cast int x)))
     (qwerty/return x)))
 
+(qwerty/func i64add ((qwerty/T x interface) (qwerty/T y interface)) ((qwerty/T _ interface))
+  (qwerty/let* ((a (qwerty/cast int64 x))
+                (b (qwerty/cast int64 y))
+                (x (qwerty/+ a b))
+                (x (qwerty/cast int64 x)))
+    (qwerty/return x)))
+
 (qwerty/func sum
   ((qwerty/T start interface) (qwerty/T end interface) (qwerty/T fun interface))
   ((qwerty/T _ interface))
@@ -47,3 +54,7 @@
        (qwerty/goto start))
       end)
      (qwerty/return sum))))
+
+(qwerty/def i64add
+  (qwerty/fn* (a b)
+    (qwerty/. i64add a b)))

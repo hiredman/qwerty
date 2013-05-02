@@ -1,6 +1,6 @@
 (qwerty/package main)
 (qwerty/import fmt)
-;; (qwerty/import reflect)
+(qwerty/import reflect)
 
 (qwerty/godef println
   (qwerty/fn* (x)
@@ -26,6 +26,15 @@
 (qwerty/def nop
   (qwerty/fn* (x) x))
 
+(qwerty/def eval
+  (qwerty/fn* (obj)
+    (qwerty/if (list? obj)
+      (qwerty/let* ((op (qwerty/cast qwerty.IFn (deref (var (car obj)))))
+                    (a1 (car (cdr obj)))
+                    (a2 (car (cdr (cdr obj)))))
+        (qwerty/go-method-call op Invoke2_1 a1 a2))
+      obj)))
+
 (qwerty/func main () ()
   (qwerty/do
    (print-notice)
@@ -34,8 +43,8 @@
      (qwerty/labels
       start
       (print-prompt)
-      (qwerty/let* ((r (lisp/read rdr)))
+      (qwerty/let* ((r (eval (lisp/read rdr))))
         (qwerty/do
-         (println (lisp/pr-str r))
+         (qwerty/. fmt.Println (lisp/pr-str r) "::" (qwerty/. reflect.TypeOf r))
          (qwerty/goto start)))))
    ))

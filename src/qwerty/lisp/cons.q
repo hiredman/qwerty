@@ -42,6 +42,19 @@
          (qwerty/let* ((foo (qwerty/cast ACons c)))
            (qwerty/.- foo cdr)))))))
 
+(qwerty/def nop (qwerty/fn* (x) x))
+
+(qwerty/func Id ((qwerty/T x interface)) ((qwerty/T _ interface))
+  (qwerty/return x))
+
+(qwerty/def list?
+  (qwerty/fn* (obj)
+    (qwerty/results (foo ok) (qwerty/cast *ACons obj)
+      (qwerty/do
+       (nop foo)
+       (qwerty/if ok
+         true
+         false)))))
 
 (qwerty/godef Car (qwerty/fn* (c) (qwerty/. CarF c)))
 
@@ -54,6 +67,10 @@
 
 (qwerty/def cons
   (qwerty/fn* (a b) (qwerty/. Cons a b)))
+(qwerty/def car
+  (qwerty/fn* (a) (qwerty/. CarF a)))
+(qwerty/def cdr
+  (qwerty/fn* (a) (qwerty/. CdrF a)))
 
 (qwerty/def lisp/map
   (qwerty/fn* (f lst)
@@ -96,7 +113,7 @@
 ;;    (qwerty/. panic "hashing cons")
 ;;    0))
 
-(qwerty/def nop (qwerty/fn* (x) x))
+
 
 ;; ;; this is so gross
 (qwerty/func (qwerty/T s ACons) String () ((qwerty/T _ string))

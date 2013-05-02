@@ -13,6 +13,11 @@
 (qwerty/func (qwerty/T the_var AVar) Deref () ((qwerty/T _ interface))
   (qwerty/return (qwerty/.- the_var value)))
 
+(qwerty/def deref
+  (qwerty/fn* (r)
+    (qwerty/let* ((r (qwerty/cast Derefer r)))
+      (qwerty/go-method-call r Deref))))
+
 (qwerty/func DerefF ((qwerty/T obj interface)) ((qwerty/T _ interface))
   (qwerty/return
    (qwerty/let* ((o (qwerty/cast Derefer obj)))
@@ -34,6 +39,8 @@
               v)))))))))
 
 (qwerty/godef Var (qwerty/fn* (name) (qwerty/. Var_ name)))
+(qwerty/def var
+  (qwerty/fn* (name) (qwerty/. Var_ name)))
 
 (qwerty/func InternVar_
   ((qwerty/T name interface) (qwerty/T value interface)) ((qwerty/T _ interface))

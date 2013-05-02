@@ -6,6 +6,7 @@
 (defmethod varize-expression Number [s up-env down-env] [s up-env down-env])
 (defmethod varize-expression String [s up-env down-env] [s up-env down-env])
 (defmethod varize-expression Character [s up-env down-env] [s up-env down-env])
+(defmethod varize-expression Boolean [s up-env down-env] [s up-env down-env])
 (defmethod varize-expression clojure.lang.Symbol [s up-env down-env]
   (cond
    (:var (meta s))
