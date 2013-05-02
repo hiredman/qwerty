@@ -25,3 +25,15 @@
 
 (qwerty/func (qwerty/T s ASymbol) HashCode  () ((qwerty/T _ interface))
   (qwerty/return (qwerty/.- s hash)))
+
+(qwerty/func Symbol_intern1 ((qwerty/T name interface)) ((qwerty/T _ interface))
+  (qwerty/return
+   (qwerty/. Symbol_ name)))
+
+(qwerty/func Symbol_intern2
+  ((qwerty/T name1 interface) (qwerty/T name2 interface)) ((qwerty/T _ interface))
+  (qwerty/return
+   (qwerty/. Symbol_
+             (qwerty/. string_concat
+                       (qwerty/. string_concat name1 "/")
+                       name2))))

@@ -126,6 +126,9 @@
           (pr-str exp))
   [exp up-env down-env])
 (defmethod varize-expression-seq 'qwerty/func [[_ name-or-target-type :as exp] up-env down-env]
+  #_(binding [*out* *err*]
+    (pprint exp)
+    (println))
   (if (symbol? name-or-target-type)
     (let [[_ name args returns body] exp]
       [exp up-env (update-in down-env [:env] (comp set into) (map second args))])

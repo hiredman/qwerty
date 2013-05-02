@@ -24,6 +24,16 @@
     IFn *qwerty.IFn
     String string})
 
+
+(defn method-name [n]
+  (get '{Symbol_intern1 qwerty.Symbol_
+         Symbol_intern2 qwerty.Symbol_intern2
+         Pattern_compile1 qwerty.Pattern_compile1
+         Var_create1 qwerty.Var_create1
+         setDynamic0 qwerty.SetDynamic0
+         }
+       n n))
+
 (defmulti type-convert type)
 (defmethod type-convert japa.parser.ast.type.ReferenceType [t]
   (let [t (symbol (.getName (.getType t)))]
@@ -87,16 +97,23 @@
 (defmethod goify japa.parser.ast.expr.MethodCallExpr [cu]
   (let [scope (goify (.getScope cu))]
     (if (@imports scope)
-      `(qwerty/. ~(symbol (str scope "_" (.getName cu)))
+      `(qwerty/. ~(method-name (symbol (str scope "_" (.getName cu)
+                                            (count (.getArgs cu)))))
                  ~@(map
                     (fn [x]
                       (if (symbol? x)
                         `(qwerty/goref ~x)
                         x))
                     (map goify (.getArgs cu))))
-      `(qwerty/go-method-call ~scope
-                              ~(symbol (.getName cu))
-                              ~@(map goify (.getArgs cu))))))
+      `(qwerty/. ~(method-name (symbol (str (.getName cu) (count (.getArgs cu)))))
+                 ~scope
+                 ~@(map
+                    (fn [x]
+                      (if (symbol? x)
+                        `(qwerty/goref ~x)
+                        x))
+                    (map goify (.getArgs cu)))))))
+
 (defmethod goify japa.parser.ast.expr.ArrayCreationExpr [cu]
   `(qwerty/make
     (~'slice ~(type-convert (.getType cu)))
@@ -116,7 +133,8 @@
   (if (static? cu)
     (let [return-type (symbol (str (.getType cu)))
           return-type (types return-type return-type)]
-      `(qwerty/func ~(symbol (str *type* "_" (.getName cu)))
+      `(qwerty/func ~(symbol (str *type* "_" (.getName cu)
+                                  (count (.getParameters cu))))
                     ~(for [p (.getParameters cu)]
                        `(qwerty/T ~(goify p) ~'interface))
                     ~(cond
@@ -129,7 +147,7 @@
                     ~(goify (.getBody cu))))
     (let [return-type (symbol (str (.getType cu)))
           return-type (types return-type return-type)]
-      `(qwerty/func (qwerty/T ~'this (~'* ~*type*)) ~(symbol (.getName cu))
+      `(qwerty/func (qwerty/T ~'this (~'* ~*type*)) ~(symbol (str (.getName cu) (count (.getParameters cu))))
                     ~(for [p (.getParameters cu)]
                        `(qwerty/T ~(goify p) ~'interface))
                     ~(cond
@@ -297,10 +315,8 @@
   (goify (.getExpression cu)))
 (defmethod goify japa.parser.ast.expr.AssignExpr
   [cu]
-  `(qwerty/do
-     (qwerty/set! ~(goify (.getTarget cu))
-                  ~(goify (.getValue cu)))
-     nil))
+  `(qwerty/set! ~(goify (.getTarget cu))
+                ~(goify (.getValue cu))))
 (defmethod goify japa.parser.ast.expr.ConditionalExpr
   [cu]
   `(qwerty/if ~(goify (.getCondition cu))
@@ -312,7 +328,10 @@
 (defmethod goify japa.parser.ast.expr.ArrayAccessExpr
   [cu]
   `(qwerty/aget (qwerty/goref ~(goify (.getName cu)))
-                ~(goify (.getIndex cu))))
+                ~(let [x (goify (.getIndex cu))]
+                   (if (string? x)
+                     (first x)
+                     x))))
 (defmethod goify japa.parser.ast.stmt.ContinueStmt
   [cu]
   `(qwerty/do

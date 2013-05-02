@@ -169,6 +169,9 @@
                       ~(close-over key variables this-name)
                       ~(close-over value variables this-name)))
 
+(defmethod close-over-seq 'qwerty/func [exp variables this-name]
+  exp)
+
 (defmethod close-over-seq :default [form variables this-name]
   (assert (not (and (symbol? (first form))
                     (= "qwerty" (namespace (first form)))))
@@ -255,6 +258,9 @@
 
 (defmethod return-count-seq 'qwerty/goref [_]
   [1])
+
+(defmethod return-count-seq 'qwerty/go-> [[_ [ch value] body]]
+  (return-count body))
 
 (defmethod return-count-seq :default [x]
   (assert (and (seq? x)
@@ -510,10 +516,16 @@
      (= 'qwerty/go<- (first lv))
      (let [[_ [name channel] body] lv]
        (lower
-        `(qwerty/go<- [~name ~channel]
+        `(qwerty/go<- (~name ~channel)
                       ~(lower `(qwerty/set! ~f ~body)))))
-     (= 'qwerty/make (first lv))
-     `(qwerty/set! ~f ~lv)
+     (= 'qwerty/go-> (first lv))
+     (let [[_ [channel value] body] lv]
+       (lower
+        `(qwerty/go<- (~channel ~value)
+                      ~(lower `(qwerty/set! ~f ~body)))))
+     (or (= 'qwerty/make (first lv))
+         (= 'qwerty/cast (first lv)))
+     `(qwerty/set! ~f ~(lower lv))
      :else
      (do
        (assert (not (and (symbol? (first lv))
@@ -976,12 +988,18 @@
     (println)))
 
 (defmethod go java.lang.Character [s]
+  #_(binding [*out* *err*]
+      (prn (type s))
+      (prn s))
   (if (= :return *context*)
     (print "return"))
-  (print " '")
-  (print (let [x (pr-str (str s))]
-           (subs x 1 (dec (count x)))))
-  (print "' ")
+  (cond
+   (= s \newline)
+   (print "'\n'")
+   (= s \')
+   (print "'\\'''")
+   :else
+   (print (str "'" s "'")))
   (if (= :return *context*)
     (println)))
 
@@ -1076,9 +1094,13 @@
 
 (defmethod go-seq 'qwerty/struct [[_ struct-name & fields]]
   (println "type" struct-name "struct {")
-  (doseq [[T name type] fields]
-    (assert (= 'qwerty/T T))
-    (println " " name (type-string type) " "))
+  (let [fields (filter seq? fields)
+        structs (remove seq? fields)]
+    (doseq [struct structs]
+      (println (type-string struct)))
+    (doseq [[T name type] fields]
+      (assert (= 'qwerty/T T))
+      (println " " name (type-string type) " ")))
   (println "}")
   (println))
 

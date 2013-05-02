@@ -42,6 +42,7 @@
 (defmethod free-seq 'qwerty/go<- [[_ [result channel] body :as exp] up-env down-env]
   [exp up-env (conj down-env result)])
 (defmethod free-seq 'qwerty/= [exp up-env down-env] [exp up-env down-env])
+(defmethod free-seq 'qwerty/go-> [exp up-env down-env] [exp up-env down-env])
 (defmethod free-seq 'qwerty/labels [[_ & body] up-env down-env]
   (let [[new-up-env new-down-env]
         (reduce
