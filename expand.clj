@@ -294,6 +294,11 @@
   (assert (= 1 (count new-children)))
   `(qwerty/return ~@new-children))
 
+(defmethod children-of-seq 'qwerty/hoist [[_ a]] (list a))
+(defmethod make-seq 'qwerty/hoist [[_ v] new-children]
+  (assert (= 1 (count new-children)))
+  `(qwerty/hoist ~@new-children))
+
 (defmethod children-of-seq :default [exp]
   (assert (not (and (symbol? (first exp))
                     (= "qwerty" (namespace (first exp)))))

@@ -8,6 +8,7 @@
 
 (qwerty/def lisp/read-list nil)
 (qwerty/def lisp/read-atom nil)
+(qwerty/def lisp/read-string nil)
 
 (qwerty/def r/one-rune
   (qwerty/fn* (rdr)
@@ -44,10 +45,15 @@
          (qwerty/set! r (r/one-rune rdr))
          (qwerty/goto start))
         newline
-        (qwerty/test (qwerty/= r \newline) atom)
+        (qwerty/test (qwerty/= r \newline) string)
         (qwerty/do
          (qwerty/set! r (r/one-rune rdr))
          (qwerty/goto start))
+        string
+        (qwerty/test (qwerty/= r \") atom)
+        (qwerty/do
+         (qwerty/set! result (lisp/read-string rdr))
+         (qwerty/goto end))
         atom
         (qwerty/do
          (r/unread rdr)
@@ -100,7 +106,6 @@
            (qwerty/. panic error)
            nil))))))
 
-
 (qwerty/def lisp/read-atom
   (qwerty/fn* (rdr)
     (qwerty/do
@@ -145,6 +150,32 @@
               (qwerty/if (qwerty/= lst "false")
                 (parse-bool lst)
                 (qwerty/. Symbol_ lst))))))))))
+
+
+(qwerty/def lisp/read-string
+  (qwerty/fn* (rdr)
+    (qwerty/do
+     (qwerty/let* ((lst "")
+                   (rune (r/one-rune rdr)))
+       (qwerty/do
+        (qwerty/labels
+         start
+         (qwerty/test (qwerty/= rune \\) quote)
+         (qwerty/do
+          (qwerty/set! rune (r/one-rune rdr))
+          (qwerty/goto read))
+         quote
+         (qwerty/test (qwerty/= rune \") read)
+         (qwerty/goto finish)
+         read
+         (qwerty/do
+          (qwerty/let* ((s ((qwerty/goref string_append_rune) lst rune)))
+            (qwerty/do
+             (qwerty/set! lst s)
+             (qwerty/set! rune (r/one-rune rdr))))
+          (qwerty/goto start))
+         finish)
+        lst)))))
 
 
 (qwerty/func Pattern_compile1 ((qwerty/T p string)) ((qwerty/T _ interface))

@@ -72,14 +72,6 @@
 (qwerty/def cdr
   (qwerty/fn* (a) (qwerty/. CdrF a)))
 
-(qwerty/def lisp/map
-  (qwerty/fn* (f lst)
-    (qwerty/if (qwerty/nil? lst)
-      nil
-      ((qwerty/goref Cons)
-       (f ((qwerty/goref Car) lst))
-       (lisp/map f ((qwerty/goref Cdr) lst))))))
-
 ;; (qwerty/def lisp/fold
 ;;   (qwerty/fn* (f init lst)
 ;;     (qwerty/do
@@ -102,6 +94,11 @@
       (lisp/fold f (f init ((qwerty/goref Car) lst))
                  ((qwerty/goref Cdr) lst)))))
 
+(qwerty/def lisp/map
+  (qwerty/fn* (f lst)
+    (qwerty/if (qwerty/nil? lst)
+      nil
+      (cons (f (car lst)) (lisp/map f (cdr lst))))))
 
 (qwerty/def lisp/reverse
   (qwerty/fn* (lst) (lisp/fold (qwerty/fn* (a b) (cons b a)) nil lst)))

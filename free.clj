@@ -29,6 +29,8 @@
           (pr-str exp))
   [exp up-env down-env])
 (defmethod free-seq 'qwerty/if [exp up-env down-env] [exp up-env down-env])
+(defmethod free-seq 'qwerty/make [exp up-env down-env] [exp up-env down-env])
+(defmethod free-seq 'qwerty/defer [exp up-env down-env] [exp up-env down-env])
 (defmethod free-seq 'qwerty/nil? [exp up-env down-env] [exp up-env down-env])
 (defmethod free java.lang.String [exp up-env down-env] [exp up-env down-env])
 (defmethod free java.lang.Boolean [exp up-env down-env] [exp up-env down-env])
