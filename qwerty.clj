@@ -21,6 +21,7 @@
 (load-file "./free.clj")
 (load-file "./var.clj")
 (load-file "./type.clj")
+(load-file "./hoist.clj")
 
 (defn fn-interface []
   (if (= *package* 'qwerty)
@@ -1537,10 +1538,7 @@
   (first (expand form {} seen raise-locals)))
 
 (defn f [form]
-  ;; (binding [*out* *err*]
-  ;;   (pprint form)
-  ;;   (println))
-  (let [nf (raise-locals-out-of-labels (collapse-do form) #{})]
+  (let [nf (raise-locals-out-of-labels (collapse-do (hoist form)) #{})]
     (if (= nf form)
       form
       (recur nf))))
@@ -1566,10 +1564,12 @@
   (if (= 'qwerty/do op)
     (let [decls (filter #(or (decl? %)
                              (and (seq? %)
-                                  (= 'qwerty/local (first %)))) exprs)
+                                  (or (= 'qwerty/local (first %))
+                                      (= 'qwerty/hoist (first %))))) exprs)
           effects (remove #(or (decl? %)
                                (and (seq? %)
-                                    (= 'qwerty/local (first %)))) exprs)]
+                                    (or (= 'qwerty/local (first %))
+                                        (= 'qwerty/hoist (first %))))) exprs)]
       `(qwerty/do
          ~@decls
          ~@(when (seq effects)
@@ -1622,8 +1622,9 @@
                                                                `(qwerty/. ~'qwerty.Var_ (qwerty/quote ~v)))))
                                                   ~new-form)
                                     new-form)
+                         ;; g
                          ;; _ (binding [*out* *err*]
-                         ;;     (pprint new-form)
+                         ;;     (pprint g)
                          ;;     (println))
                          m (top-level-init (f (lower (α-convert new-form {}))))]
                      (when (System/getenv "IR")

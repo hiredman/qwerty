@@ -11,7 +11,7 @@ foo: foo.go
 repl: src/qwerty/repl.go
 	GOPATH=$$PWD go build src/qwerty/repl.go
 
-.compiler: qwerty.clj alpha.clj Makefile expand.clj free.clj var.clj
+.compiler: qwerty.clj alpha.clj Makefile expand.clj free.clj var.clj hoist.clj type.clj
 	touch .compiler
 
 %.go: %.q compilation-env .compiler

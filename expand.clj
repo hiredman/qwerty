@@ -315,7 +315,7 @@
   (loop [form form
          up-env up-env
          down-env down-env]
-    (let [[new-form new-up-env new-down-env :as r] (f form up-env down-env)
+    (let [[new-form new-up-env new-down-env :as r] (trampoline f form up-env down-env)
           _ (assert (= 3 (count r)))
           x form]
       (if (= new-form form)

@@ -54,6 +54,7 @@
         (qwerty/results (item found?) (qwerty/map-entry ge n)
           (qwerty/if found?
             (qwerty/do
+             (nop item)
              (qwerty/map-update ge n value)
              nil)
             (bind (cdr env) n value)))))))
@@ -73,7 +74,7 @@
         (qwerty/if (same-symbol? (car obj) (qwerty/quote qwerty/do))
           (lisp/fold
            (qwerty/fn* (lv obj)
-             (go/eval obj))
+             (go/eval* obj env))
            nil
            (cdr obj))
           nil))
@@ -85,6 +86,10 @@
              nil)
             (cdr n)))
         obj))))
+
+(qwerty/def go/eval
+  (qwerty/fn* (obj)
+    (go/eval* obj global-env)))
 
 (qwerty/def eval
   (qwerty/fn* (obj)
