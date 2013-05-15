@@ -64,6 +64,7 @@
 (defmethod free-seq 'qwerty/fn* [[_ args body :as exp] up-env down-env]
   [exp up-env (into down-env args)])
 (defmethod free-seq 'qwerty/map-update [exp up-env down-env] [exp up-env down-env])
+(defmethod free-seq 'qwerty/map-entry [exp up-env down-env] [exp up-env down-env])
 (defmethod free-seq 'qwerty/quote [exp up-env down-env] [exp up-env down-env])
 (defmethod free-seq 'qwerty/- [exp up-env down-env] [exp up-env down-env])
 (defmethod free-seq 'qwerty/* [exp up-env down-env] [exp up-env down-env])

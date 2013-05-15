@@ -896,6 +896,8 @@
 
 (defmethod lower-seq 'qwerty/map-update [[_ & args]]
   (if (every? #(or (symbol? %)
+                   (string? %)
+                   (number? %)
                    (and (seq? %)
                         (= 'qwerty/goref (first %)))) args)
     `(qwerty/map-update ~@args)
@@ -908,6 +910,23 @@
       (lower
        `(qwerty/let* ~(remove #(= (first %) (second %)) bindings)
                      (qwerty/map-update ~@(map first bindings)))))))
+
+(defmethod lower-seq 'qwerty/map-entry [[_ & args]]
+  (if (every? #(or (symbol? %)
+                   (string? %)
+                   (number? %)
+                   (and (seq? %)
+                        (= 'qwerty/goref (first %)))) args)
+    `(qwerty/map-entry ~@args)
+    (let [bindings (for [a args]
+                     (if (or (symbol? a)
+                             (and (seq? a)
+                                  (= 'qwerty/goref (first a))))
+                       (list a a)
+                       (list (gensym 'mapu) (lower a))))]
+      (lower
+       `(qwerty/let* ~(remove #(= (first %) (second %)) bindings)
+                     (qwerty/map-entry ~@(map first bindings)))))))
 
 (defmethod lower-seq 'qwerty/= [[_ a b]]
   (cond
@@ -1206,12 +1225,14 @@
 (defmethod go-seq 'qwerty/aget [[_ m k]]
   (if (= :return *context*)
     (print "return"))
-  (print "" (str (if (and (seq? m)
-                          (= 'qwerty/goref (first m)))
-                   (second m)
-                   (munge m))
-                 "["))
+  ;; (print "" (str (if (and (seq? m)
+  ;;                         (= 'qwerty/goref (first m)))
+  ;;                  (second m)
+  ;;                  (munge m))
+  ;;                "["))
   (binding [*context* :statement]
+    (go m)
+    (print "[")
     (go k))
   (print "]")
   (if (= :return *context*)
@@ -1533,6 +1554,7 @@
 (defmethod raise-locals-seq 'qwerty/aget [exp up-env down-env] [exp up-env down-env])
 (defmethod raise-locals-seq 'qwerty/bit-and [exp up-env down-env] [exp up-env down-env])
 (defmethod raise-locals-seq 'qwerty/hoist [exp up-env down-env] [exp up-env down-env])
+(defmethod raise-locals-seq 'qwerty/map-entry [exp up-env down-env] [exp up-env down-env])
 
 (defn raise-locals-out-of-labels [form seen]
   (first (expand form {} seen raise-locals)))

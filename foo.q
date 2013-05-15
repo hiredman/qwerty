@@ -165,6 +165,8 @@
   (qwerty/do
    ((qwerty/fn* () (println "function call")))
    (qwerty/defer (qwerty/fn* () (println "derefed action")))
+   (reflective/invoke (qwerty/quote fmt.Println)
+                      (qwerty/quote ("Qwerty Reflection")))
    (println "hash of foo")
    (println (qwerty/. qwerty.Hash "foo"))
    (println (qwerty/. qwerty.Hash (qwerty/quote foo)))

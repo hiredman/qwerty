@@ -77,7 +77,11 @@
              (go/eval* obj env))
            nil
            (cdr obj))
-          nil))
+          (qwerty/if (same-symbol? (car obj) (qwerty/quote qwerty/.))
+            (qwerty/quote Foo)
+            (qwerty/do
+             (qwerty/. panic "dunno")
+             nil))))
       (qwerty/if (symbol? obj)
         (qwerty/let* ((n (look-up obj env)))
           (qwerty/if (qwerty/nil? n)

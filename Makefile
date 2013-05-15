@@ -37,11 +37,3 @@ clean:
 	rm -rf pkg
 	rm -rf foo foo.env foo.go
 	rm -rf repl
-	rm -rf LispReader.q LispReader.env LispReader.go
-
-LispReader.q: LispReader.java java-to-go.clj
-	./java-to-go.clj < LispReader.java > LispReader.q
-
-LispReader: LispReader.go
-	GOPATH=$$PWD go build LispReader.go
-
