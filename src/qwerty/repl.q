@@ -61,33 +61,46 @@
 
 (qwerty/def global-env (new-env))
 (qwerty/def *package* (qwerty/quote qwerty))
+(qwerty/def structs (qwerty/make (map string interface)))
+
+(qwerty/def go/eval* nil)
+
+(qwerty/def go/ev-list
+  (qwerty/fn* (obj env)
+    (qwerty/if (same-symbol? (car obj) (qwerty/quote qwerty/godef))
+      (qwerty/let* ((n (car (cdr obj)))
+                    (v (go/eval* (car (cdr (cdr obj))) env)))
+        (qwerty/do (bind env n v) nil))
+      (qwerty/if (same-symbol? (car obj) (qwerty/quote qwerty/do))
+        (lisp/fold (qwerty/fn* (lv obj) (go/eval* obj env)) nil (cdr obj))
+        (qwerty/if (same-symbol? (car obj) (qwerty/quote qwerty/.))
+          (qwerty/let* ((vs (reflective/invoke (car (cdr obj)) (cdr (cdr obj))))
+                        (vs (qwerty/cast (slice reflect.Value) vs))
+                        (i (qwerty/cast reflect.Value (qwerty/nth* vs 0))))
+            (qwerty/go-method-call i Interface))
+          (qwerty/if (same-symbol? (car obj) (qwerty/quote qwerty/hoist))
+            (go/eval* (car (cdr obj)) env)
+            (qwerty/if (same-symbol? (car obj) (qwerty/quote qwerty/struct))
+              (qwerty/do
+               (qwerty/let* ((sname (string/concat
+                                     (string/concat
+                                      (symbol/name *package*)
+                                      ".")
+                                     (symbol/name (car (cdr obj)))))
+                             (sname (qwerty/cast string sname))
+                             (m (qwerty/cast (map string interface) structs)))
+                 (qwerty/map-update n sname (qwerty/make (map string interface))))
+               nil)
+              (qwerty/do (qwerty/. panic "dunno") nil))))))))
 
 (qwerty/def go/eval*
   (qwerty/fn* (obj env)
     (qwerty/if (list? obj)
-      (qwerty/if (same-symbol? (car obj) (qwerty/quote qwerty/godef))
-        (qwerty/let* ((n (car (cdr obj)))
-                      (v (go/eval* (car (cdr (cdr obj))) env)))
-          (qwerty/do
-           (bind env n v)
-           nil))
-        (qwerty/if (same-symbol? (car obj) (qwerty/quote qwerty/do))
-          (lisp/fold
-           (qwerty/fn* (lv obj)
-             (go/eval* obj env))
-           nil
-           (cdr obj))
-          (qwerty/if (same-symbol? (car obj) (qwerty/quote qwerty/.))
-            (qwerty/quote Foo)
-            (qwerty/do
-             (qwerty/. panic "dunno")
-             nil))))
+      (go/ev-list obj env)
       (qwerty/if (symbol? obj)
         (qwerty/let* ((n (look-up obj env)))
           (qwerty/if (qwerty/nil? n)
-            (qwerty/do
-             (qwerty/. panic "dunno")
-             nil)
+            (qwerty/do (qwerty/. panic "dunno") nil)
             (cdr n)))
         obj))))
 

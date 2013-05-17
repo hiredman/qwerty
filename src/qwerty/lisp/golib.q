@@ -11,6 +11,8 @@
    (qwerty/map-update l "reflect.ValueOf" (qwerty/goref reflect.ValueOf))
    ))
 
+(qwerty/def symbol/name nil)
+
 (qwerty/def reflective/invoke
   (qwerty/fn* (fun args)
     (qwerty/let* ((i (qwerty/cast int ((qwerty/goref ListCount) args)))
@@ -19,8 +21,8 @@
                   (ii 0)
                   (sn (qwerty/cast string (symbol/name fun)))
                   (m (qwerty/cast (map string interface) library))
-                  (f (qwerty/cast reflect.Value
-                                  (qwerty/. reflect.ValueOf (qwerty/map-entry m sn)))))
+                  (f (qwerty/. reflect.ValueOf (qwerty/map-entry m sn)))
+                  (f (qwerty/cast reflect.Value f)))
       (qwerty/do
        (qwerty/labels
         start
