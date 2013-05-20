@@ -15,11 +15,6 @@ mostly compile in to static init fuctions (init() in Go). Qwerty
 ensures they are run in order for a file, but among the files in a
 package the inits run in an arbitrary order. 
 
-## Reader
-
-The reader is really gross because it is a hacked up mechanical
-translation of the Java source of Clojure's reader.
-
 ## Todo
 
 missing an interpreter
